@@ -4,7 +4,10 @@ metadata:
   name: {{ include "chart.fullname" . }}-pvc
 spec:
   accessModes:
-    - ReadWriteOnce
+    - {{ .Values.storage.accessMode }}
   resources:
     requests:
       storage: {{ .Values.storage.size }}
+  storageClassName: {{ .Values.storage.storageClass }}
+
+
