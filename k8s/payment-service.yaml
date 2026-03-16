@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+    spec:
+      containers:
+        - name: payment-service
+          image: perfume-payment-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 7003
+          env:
+            - name: PORT
+              value: "7003"
+            - name: NODE_ENV
+              value: "production"
+            - name: DB_HOST
+              value: "db"
+            - name: DB_USER
+              value: "postgres"
+            - name: DB_PASSWORD
+              value: "postgres"
+            - name: DB_NAME
+              value: "payment_db"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 7003
+      targetPort: 7003
+  selector:
+    app: payment-service

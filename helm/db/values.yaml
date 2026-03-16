@@ -1,0 +1,36 @@
+replicaCount: 1
+
+image:
+  repository: postgres
+  pullPolicy: IfNotPresent
+  tag: "15-alpine"
+
+service:
+  type: ClusterIP
+  port: 5432
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+ingress:
+  enabled: false
+
+env:
+  {}
+
+# Sensitive values — override these or use external secret management
+secrets:
+  POSTGRES_USER: "postgres"
+  POSTGRES_PASSWORD: "postgres"
+
+# Keys from the Secret to inject as env vars
+secretKeys:
+  - POSTGRES_USER
+  - POSTGRES_PASSWORD
+
+storage:
+  size: 1Gi

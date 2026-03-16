@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+        - name: user-service
+          image: perfume-user-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 7010
+          env:
+            - name: PORT
+              value: "7010"
+            - name: NODE_ENV
+              value: "production"
+            - name: DB_HOST
+              value: "db"
+            - name: DB_USER
+              value: "postgres"
+            - name: DB_PASSWORD
+              value: "postgres"
+            - name: DB_NAME
+              value: "user_db"
+            - name: JWT_SECRET
+              value: "super-secret-jwt-key-aurora"
+            - name: EMAIL_SERVICE_URL
+              value: "http://email-service:7005/api/v1/emails"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 7010
+      targetPort: 7010
+  selector:
+    app: user-service

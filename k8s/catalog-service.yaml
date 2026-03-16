@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: catalog-service
+  template:
+    metadata:
+      labels:
+        app: catalog-service
+    spec:
+      containers:
+        - name: catalog-service
+          image: perfume-catalog-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 7006
+          env:
+            - name: PORT
+              value: "7006"
+            - name: NODE_ENV
+              value: "production"
+            - name: DB_HOST
+              value: "db"
+            - name: DB_USER
+              value: "postgres"
+            - name: DB_PASSWORD
+              value: "postgres"
+            - name: DB_NAME
+              value: "catalog_db"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 7006
+      targetPort: 7006
+  selector:
+    app: catalog-service

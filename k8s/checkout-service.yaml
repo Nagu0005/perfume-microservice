@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: checkout-service
+  template:
+    metadata:
+      labels:
+        app: checkout-service
+    spec:
+      containers:
+        - name: checkout-service
+          image: perfume-checkout-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 7004
+          env:
+            - name: PORT
+              value: "7004"
+            - name: NODE_ENV
+              value: "production"
+            - name: DB_HOST
+              value: "db"
+            - name: DB_USER
+              value: "postgres"
+            - name: DB_PASSWORD
+              value: "postgres"
+            - name: DB_NAME
+              value: "checkout_db"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 7004
+      targetPort: 7004
+  selector:
+    app: checkout-service

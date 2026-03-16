@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shipping-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shipping-service
+  template:
+    metadata:
+      labels:
+        app: shipping-service
+    spec:
+      containers:
+        - name: shipping-service
+          image: perfume-shipping-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 7008
+          env:
+            - name: PORT
+              value: "7008"
+            - name: NODE_ENV
+              value: "production"
+            - name: DB_HOST
+              value: "db"
+            - name: DB_USER
+              value: "postgres"
+            - name: DB_PASSWORD
+              value: "postgres"
+            - name: DB_NAME
+              value: "shipping_db"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shipping-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 7008
+      targetPort: 7008
+  selector:
+    app: shipping-service

@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ad-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ad-service
+  template:
+    metadata:
+      labels:
+        app: ad-service
+    spec:
+      containers:
+        - name: ad-service
+          image: perfume-ad-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 7002
+          env:
+            - name: PORT
+              value: "7002"
+            - name: NODE_ENV
+              value: "production"
+            - name: DB_HOST
+              value: "db"
+            - name: DB_USER
+              value: "postgres"
+            - name: DB_PASSWORD
+              value: "postgres"
+            - name: DB_NAME
+              value: "ad_db"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ad-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 7002
+      targetPort: 7002
+  selector:
+    app: ad-service

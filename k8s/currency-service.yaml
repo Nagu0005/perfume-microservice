@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: currency-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: currency-service
+  template:
+    metadata:
+      labels:
+        app: currency-service
+    spec:
+      containers:
+        - name: currency-service
+          image: perfume-currency-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 7009
+          env:
+            - name: PORT
+              value: "7009"
+            - name: NODE_ENV
+              value: "production"
+            - name: DB_HOST
+              value: "db"
+            - name: DB_USER
+              value: "postgres"
+            - name: DB_PASSWORD
+              value: "postgres"
+            - name: DB_NAME
+              value: "currency_db"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: currency-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 7009
+      targetPort: 7009
+  selector:
+    app: currency-service
