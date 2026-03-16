@@ -87,10 +87,10 @@ pipeline {
                     sh '''
                     find ./helm -name "values.yaml" | while read f; do
                         echo "Cleaning $f"
-                        sudo sh -c "cat $f | tr -cd '\\11\\12\\15\\40-\\176' > $f.clean"
-                        sudo mv $f.clean $f
-                        sudo chown jenkins:jenkins $f
-                        sudo chmod 644 $f
+                        cat "$f" | tr -cd '\\11\\12\\15\\40-\\176' > "$f.clean"
+                        mv "$f.clean" "$f"
+                        chown jenkins:jenkins "$f"
+                        chmod 644 "$f"
                     done
                     '''
                 }
