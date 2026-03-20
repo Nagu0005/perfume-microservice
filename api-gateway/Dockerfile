@@ -12,9 +12,9 @@ COPY . .
 
 USER node
 
-EXPOSE 8080
+EXPOSE 8090
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-    CMD wget -qO- http://localhost:8080/health || exit 1
+    CMD wget -qO- http://localhost:8090/health || exit 1
 
 CMD ["npm", "start"]

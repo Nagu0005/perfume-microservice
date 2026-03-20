@@ -8,7 +8,7 @@ An enterprise-level E-commerce platform built with a modern Microservices Archit
 
 The system is composed of several independent, single-responsibility microservices. Each service has its own dedicated PostgreSQL database to ensure loose coupling and bounded contexts.
 
-*   **API Gateway** (`:8080`): Central entry point for all client requests. Handles proxying, rate-limiting, and security.
+*   **API Gateway** (`:8090`): Central entry point for all client requests. Handles proxying, rate-limiting, and security.
 *   **Catalog Service** (`:7006`): Manages perfume products, categories, and inventory.
 *   **Cart Service** (`:7001`): Manages user shopping carts.
 *   **Checkout Service** (`:7004`): Orchestrates the checkout process, calculates totals, and initiates orders.
@@ -26,7 +26,7 @@ To ensure high availability and prevent cascading failures, the system uses an *
 
 ```mermaid
 graph TD
-    Client((Client App)) -->|HTTP POST /api/v1/checkout| API_Gateway[API Gateway :8080]
+    Client((Client App)) -->|HTTP POST /api/v1/checkout| API_Gateway[API Gateway :8090]
     API_Gateway -->|REST| Checkout[Checkout Service]
     Checkout -->|REST| Order[Order Service]
     
@@ -96,19 +96,19 @@ c:\Data_Nagendra\perfume_website\
 
 ## 🛠️ Full Project APIs & Postman Testing Payloads
 
-Import these payloads into **Postman** to test the system endpoints. **Note**: Always hit the `API Gateway` on port `8080`.
+Import these payloads into **Postman** to test the system endpoints. **Note**: Always hit the `API Gateway` on port `8090`.
 
 ### 1. Catalog Service (`/api/v1/catalog`)
 **GET All Products**
 *   **Method**: `GET`
-*   **URL**: `http://localhost:8080/api/v1/catalog/`
+*   **URL**: `http://localhost:8090/api/v1/catalog/`
 
 ---
 
 ### 2. Checkout Service (`/api/v1/checkout`)
 **Initiate a Checkout**
 *   **Method**: `POST`
-*   **URL**: `http://localhost:8080/api/v1/checkout/`
+*   **URL**: `http://localhost:8090/api/v1/checkout/`
 *   **Headers**: `Content-Type: application/json`
 *   **Body** (Raw JSON):
 ```json
@@ -135,11 +135,11 @@ Import these payloads into **Postman** to test the system endpoints. **Note**: A
 ### 3. Order Service (`/api/v1/orders`)
 **Get All Orders (Admin)**
 *   **Method**: `GET`
-*   **URL**: `http://localhost:8080/api/v1/orders/`
+*   **URL**: `http://localhost:8090/api/v1/orders/`
 
 **Update Order Status**
 *   **Method**: `PUT`
-*   **URL**: `http://localhost:8080/api/v1/orders/1/status`
+*   **URL**: `http://localhost:8090/api/v1/orders/1/status`
 *   **Body** (Raw JSON):
 ```json
 {
@@ -153,7 +153,7 @@ Import these payloads into **Postman** to test the system endpoints. **Note**: A
 ### 4. Email Service (`/api/v1/emails`)
 *(Usually triggered internally via Queue, but can be tested via API if exposed)*
 *   **Method**: `POST`
-*   **URL**: `http://localhost:8080/api/v1/emails/`
+*   **URL**: `http://localhost:8090/api/v1/emails/`
 *   **Body** (Raw JSON):
 ```json
 {
@@ -211,7 +211,7 @@ For staging and local development, you can still use Docker Compose:
 docker-compose up -d --build
 
 # Verify Gateway Health
-curl http://localhost:8080/health
+curl http://localhost:8090/health
 
 # Access Frontend
 # Visit the storefront: http://localhost:3001

@@ -5,7 +5,7 @@ import shutil
 # Service catalog — port, nodePort, health path
 # ─────────────────────────────────────────────
 SERVICES = {
-    "api-gateway":           {"port": 8080, "health": "/health"},
+    "api-gateway":           {"port": 8090, "health": "/health"},
     "user-service":          {"port": 7010, "health": "/health"},
     "catalog-service":       {"port": 7006, "health": "/health"},
     "cart-service":          {"port": 7001, "health": "/health"},
@@ -23,7 +23,7 @@ SERVICES = {
 
 # Plain-text env vars per service (credentials go to Secrets below)
 ENV_VARS = {
-    "api-gateway":           {"PORT": "8080", "NODE_ENV": "production"},
+    "api-gateway":           {"PORT": "8090", "NODE_ENV": "production"},
     "user-service":          {"PORT": "7010", "NODE_ENV": "production", "DB_HOST": "db", "DB_NAME": "user_db",
                               "EMAIL_SERVICE_URL": "http://email-service:7005/api/v1/emails"},
     "catalog-service":       {"PORT": "7006", "NODE_ENV": "production", "DB_HOST": "db", "DB_NAME": "catalog_db"},

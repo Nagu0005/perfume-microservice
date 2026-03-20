@@ -1,13 +1,10 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: db-pvc
+  name: {{ include "chart.fullname" . }}-pvc
 spec:
   accessModes:
-    - {{ .Values.storage.accessMode }}
+    - ReadWriteOnce
   resources:
     requests:
       storage: {{ .Values.storage.size }}
-  storageClassName: {{ .Values.storage.storageClass }}
-
-

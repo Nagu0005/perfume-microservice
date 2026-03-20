@@ -22,7 +22,7 @@ ingress:
 env:
   {}
 
-# Sensitive values ï¿½ override these or use external secret management
+# Sensitive values — override these or use external secret management
 secrets:
   POSTGRES_USER: "postgres"
   POSTGRES_PASSWORD: "postgres"
@@ -33,7 +33,4 @@ secretKeys:
   - POSTGRES_PASSWORD
 
 storage:
-  enabled: true
   size: 1Gi
-  storageClass: gp2   # must match your EKS StorageClass
-  accessMode: ReadWriteOnce

@@ -52,7 +52,7 @@
 
     <script type="text/babel">
         const { useState, useEffect } = React;
-        const API_BASE = 'http://localhost:8080/api/v1';
+        const API_BASE = 'http://localhost:8090/api/v1';
 
 
         // --- Main App Component ---
@@ -142,7 +142,7 @@
                         setLoading(true);
                         // Fetch Orders and Products
                         const [ordersRes, productsRes] = await Promise.all([
-                            fetch('http://localhost:8080/orders'),
+                            fetch('http://localhost:8090/orders'),
                             fetch(`${API_BASE}/catalog`)
                         ]);
 

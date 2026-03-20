@@ -41,7 +41,7 @@ spec:
       volumes:
         - name: pgdata
           persistentVolumeClaim:
-            claimName: db-pvc
+            claimName: {{ include "chart.fullname" . }}-pvc
         - name: init-db
           configMap:
             name: {{ include "chart.fullname" . }}-init-script

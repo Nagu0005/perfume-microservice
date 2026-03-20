@@ -32,9 +32,9 @@ services:
     build: ./api-gateway
     container_name: api-gateway
     ports:
-      - "8090:8080"
+      - "8090:8090"
     environment:
-      - PORT=8080
+      - PORT=8090
       - NODE_ENV=production
     depends_on:
       catalog-service:

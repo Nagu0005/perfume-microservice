@@ -7,7 +7,7 @@ image:
 
 service:
   type: ClusterIP
-  port: 8080
+  port: 8090
 
 probes:
   enabled: true
@@ -42,6 +42,6 @@ ingress:
   tls: []
 
 env:
-  PORT: "8080"
+  PORT: "8090"
   NODE_ENV: "production"
 
