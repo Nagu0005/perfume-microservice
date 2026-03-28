@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aurora Perfumes - Luxury Fragrances</title>
+    <title>Ookielz - Jewelry • Perfumes • Face Packs</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
@@ -207,6 +207,28 @@
             const [checkoutResult, setCheckoutResult] = useState(null);
             const [shippingAddress, setShippingAddress] = useState({ name: '', address: '', city: '', pincode: '', phone: '' });
 
+            // Pre-fill shipping address from user's DB profile
+            useEffect(() => {
+                if (user && user.token) {
+                    fetch(`${API_BASE}/users/profile`, {
+                        headers: { 'Authorization': `Bearer ${user.token}` }
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success && data.data) {
+                            const p = data.data;
+                            setShippingAddress(prev => ({
+                                name: prev.name || p.name || '',
+                                address: prev.address || p.business_address || '',
+                                city: prev.city || '',
+                                pincode: prev.pincode || p.pincode || '',
+                                phone: prev.phone || ''
+                            }));
+                        }
+                    }).catch(err => console.warn('Could not pre-fill address:', err));
+                }
+            }, [user]);
+
             // -- Data Fetching --
             useEffect(() => {
                 const fetchData = async () => {
@@ -297,8 +319,16 @@
             // -- Auth Handlers --
             const handleAuth = async (e, type) => {
                 e.preventDefault();
-                setAuthLoading(true);
                 setAuthError('');
+
+                // Strict client-side email format validation
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(authForm.email)) {
+                    setAuthError('Please enter a valid email address format.');
+                    return;
+                }
+
+                setAuthLoading(true);
                 
                 try {
                     const endpoint = type === 'register' ? '/users/register' : '/users/login';
@@ -375,6 +405,37 @@
                     });
                     const data = await res.json();
                     if (data.success) {
+
+                        // Also create an order in the order-service so it appears in My Orders
+                        const PROTO_HOST = API_BASE.replace('/api/v1', '');
+                        try {
+                            await fetch(`${PROTO_HOST}/orders`, {
+                                method: 'POST',
+                                headers,
+                                body: JSON.stringify({
+                                    checkout_id: data.data.id,
+                                    user_id: user.id.toString(),
+                                    order_total: data.data.total_amount,
+                                    shipping_address: payload.shipping_address
+                                })
+                            });
+                        } catch(orderErr) {
+                            console.warn('Order sync failed but checkout succeeded:', orderErr);
+                        }
+
+                        // Save shipping address to user's DB profile for next time
+                        try {
+                            await fetch(`${API_BASE}/users/profile`, {
+                                method: 'PUT',
+                                headers,
+                                body: JSON.stringify({
+                                    business_name: user.name,
+                                    business_address: `${shippingAddress.address}, ${shippingAddress.city}`,
+                                    pincode: shippingAddress.pincode
+                                })
+                            });
+                        } catch(e) { console.warn('Address save failed:', e); }
+
                         setCheckoutResult(data.data);
                         setCart([]);
                         setIsCartOpen(false);
@@ -418,7 +479,7 @@
                         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
                             <div className="flex items-center space-x-8">
                                 <button onClick={goToHome} className={`text-2xl font-serif font-bold italic tracking-wider transition-colors hover:scale-105 transform cursor-pointer ${isScrolled || view !== 'home' ? 'text-brand-900' : 'text-white'}`}>
-                                    Aurora<span className="text-brand-500">.</span>
+                                    <img src="./logo.jpg" alt="Ookielz" className="h-10 w-auto object-contain" />
                                 </button>
                                 <div className={`hidden md:flex space-x-6 text-sm font-medium transition-colors ${isScrolled || view !== 'home' ? 'text-gray-600' : 'text-gray-200'}`}>
                                     <button onClick={() => { goToHome(); setActiveCategory('All'); setTimeout(() => document.getElementById('catalog').scrollIntoView(), 100) }} className="hover:text-brand-500 transition">Perfumes</button>
@@ -449,7 +510,9 @@
                                 {user ? (
                                     <div className="relative group cursor-pointer flex items-center">
                                         <div className="flex items-center hover:text-brand-500 transition">
-                                            <LIcon name="user" className="w-5 h-5 mr-1" />
+                                            <div className="w-8 h-8 rounded-full bg-brand-100 border-2 border-brand-300 flex items-center justify-center mr-2">
+                                                <LIcon name="user" className="w-4 h-4 text-brand-700" />
+                                            </div>
                                             <span className="text-sm font-medium hidden md:inline">{user.name.split(' ')[0]}</span>
                                         </div>
                                         {/* Dropdown Menu */}
@@ -460,7 +523,7 @@
                                             </div>
                                             <ul className="py-2 text-sm text-gray-700">
                                                 <li>
-                                                    <button className="w-full text-left px-4 py-2 hover:bg-brand-50 hover:text-brand-600 transition flex items-center">
+                                                    <button onClick={() => setView('orders')} className="w-full text-left px-4 py-2 hover:bg-brand-50 hover:text-brand-600 transition flex items-center">
                                                         <LIcon name="package" className="w-4 h-4 mr-2" /> My Orders
                                                     </button>
                                                 </li>
@@ -672,18 +735,8 @@
                                             <h4 className="text-brand-500 font-bold tracking-widest uppercase mb-2 text-sm">{selectedProduct.brand}</h4>
                                             <h1 className="text-4xl lg:text-5xl font-serif text-brand-900 mb-4 leading-tight">{selectedProduct.name}</h1>
 
-                                            {/* Reviews mockup */}
-                                            <div className="flex items-center mb-6 text-sm">
-                                                <div className="flex text-yellow-400 mr-2">
-                                                    <LIcon name="star" className="w-4 h-4 fill-current" />
-                                                    <LIcon name="star" className="w-4 h-4 fill-current" />
-                                                    <LIcon name="star" className="w-4 h-4 fill-current" />
-                                                    <LIcon name="star" className="w-4 h-4 fill-current" />
-                                                    <LIcon name="star-half" className="w-4 h-4 fill-current text-gray-300" />
-                                                </div>
-                                                <span className="text-gray-500 underline cursor-pointer">(128 Reviews)</span>
-                                            </div>
-
+                                            {/* Delivery & Seller Profile Estimator */}
+                                            <DeliveryEstimator sellerId={selectedProduct.seller_id} />
                                             <p className="text-gray-600 leading-relaxed mb-8 text-lg">
                                                 {selectedProduct.description} Carefully formulated by master perfumers to ensure a long-lasting and evocative scent profile that captures the essence of {selectedProduct.category.toLowerCase()}'s luxury.
                                             </p>
@@ -695,12 +748,9 @@
                                                     <p className="text-3xl font-bold text-brand-900">
                                                         ₹{getPriceBreakdown(selectedProduct.base_price, selectedProduct.gst_percentage).total.toLocaleString()}
                                                     </p>
-                                                    <p className="text-xs text-gray-500 mt-1">
-                                                        (Base ₹{selectedProduct.base_price} + {selectedProduct.gst_percentage}% GST)
-                                                    </p>
                                                 </div>
-                                                <div className="text-sm font-medium text-green-600 bg-green-50 px-3 py-1 rounded border border-green-200 inline-block w-fit">
-                                                    In Stock. Ships in 24h
+                                                <div className="text-sm font-medium text-green-600 bg-green-50 px-3 py-1 rounded border border-green-200 inline-block w-fit h-fit">
+                                                    <LIcon name="check-circle" className="w-4 h-4 inline mr-1" /> In Stock Ready
                                                 </div>
                                             </div>
 
@@ -755,7 +805,7 @@
                                 <div className="bg-white/95 backdrop-blur-xl w-full max-w-md p-8 md:p-10 rounded-3xl shadow-2xl relative z-10">
                                     <div className="text-center mb-8">
                                         <h2 className="text-3xl font-serif text-brand-900 mb-2 font-bold">
-                                            {view === 'login' ? 'Welcome Back' : 'Join Aurora.'}
+                                            {view === 'login' ? 'Welcome Back' : 'Join Ookielz.'}
                                         </h2>
                                         <p className="text-gray-500 text-sm">
                                             {view === 'login' ? 'Enter your details to access your luxury account.' : 'Create an account to track orders and save favorites.'}
@@ -962,6 +1012,26 @@
                             </div>
                         )}
 
+                        {/* ======================================= */}
+                        {/* MY ORDERS VIEW                           */}
+                        {/* ======================================= */}
+                        {view === 'orders' && user && (
+                            <div className="animate-fade-in flex-grow pt-32 pb-24 bg-white">
+                                <div className="max-w-4xl mx-auto px-6">
+                                    <div className="flex items-center justify-between mb-8">
+                                        <div>
+                                            <h2 className="text-3xl font-serif font-bold text-brand-900">My Orders</h2>
+                                            <p className="text-gray-500 text-sm mt-1">Track and manage your purchases</p>
+                                        </div>
+                                        <button onClick={goToHome} className="text-sm text-brand-600 hover:text-brand-800 transition flex items-center font-medium">
+                                            <LIcon name="arrow-left" className="w-4 h-4 mr-1" /> Back to Store
+                                        </button>
+                                    </div>
+                                    <OrderHistory userId={user.id} token={user.token} />
+                                </div>
+                            </div>
+                        )}
+
                     </div>
 
                     {/* --- GLOBAL FOOTER --- */}
@@ -969,7 +1039,7 @@
                         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
                             <div className="col-span-1 md:col-span-2">
                                 <h1 className="text-2xl font-serif font-bold italic tracking-wider text-white mb-6">
-                                    Aurora<span className="text-brand-500">.</span>
+                                    <img src="./logo.jpg" alt="Ookielz" className="h-12 w-auto object-contain bg-white/20 p-2 rounded-lg" />
                                 </h1>
                                 <p className="text-sm opacity-80 max-w-sm leading-relaxed mb-6">
                                     Elevating your presence with the finest selection of luxury fragrances sourced globally. Experience the art of perfumery.
@@ -995,7 +1065,7 @@
                             </div>
                         </div>
                         <div className="max-w-7xl mx-auto text-center pt-8 border-t border-brand-800 text-xs opacity-60 flex justify-between items-center">
-                            <span>&copy; {new Date().getFullYear()} Aurora Perfumes. All rights reserved. Built with React & Tailwind.</span>
+                            <span>&copy; {new Date().getFullYear()} Ookielz. All rights reserved. Built with React & Tailwind.</span>
                             <span>Admin Portal accessible internally.</span>
                         </div>
                     </footer>
@@ -1145,6 +1215,256 @@
         `;
         document.head.appendChild(styleSheet);
 
+
+        // --- Order History Component ---
+        function OrderHistory({ userId, token }) {
+            const [orders, setOrders] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+
+            useEffect(() => {
+                const fetchOrders = async () => {
+                    try {
+                        setLoading(true);
+                        const PROTO_HOST = API_BASE.replace('/api/v1', '');
+                        const res = await fetch(`${PROTO_HOST}/orders?userId=${userId}`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            setOrders(data.data || []);
+                        } else {
+                            setError(data.error || 'Failed to load orders');
+                        }
+                    } catch (err) {
+                        setError('Could not connect to order service.');
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+                fetchOrders();
+            }, [userId, token]);
+
+            const statusConfig = {
+                'PENDING': { color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: 'clock', label: 'Pending' },
+                'PROCESSING': { color: 'bg-blue-100 text-blue-800 border-blue-200', icon: 'loader', label: 'Processing' },
+                'SHIPPED': { color: 'bg-purple-100 text-purple-800 border-purple-200', icon: 'truck', label: 'Shipped' },
+                'DELIVERED': { color: 'bg-green-100 text-green-800 border-green-200', icon: 'check-circle', label: 'Delivered' },
+            };
+
+            const getStatus = (s) => statusConfig[s] || statusConfig['PENDING'];
+
+            if (loading) return (
+                <div className="space-y-4">
+                    {[1,2,3].map(i => (
+                        <div key={i} className="animate-pulse bg-gray-50 rounded-2xl h-36 border border-gray-100"></div>
+                    ))}
+                </div>
+            );
+
+            if (error) return (
+                <div className="text-center py-20">
+                    <LIcon name="alert-triangle" className="w-12 h-12 text-red-400 mx-auto mb-4" />
+                    <p className="text-gray-600 font-medium">{error}</p>
+                </div>
+            );
+
+            if (orders.length === 0) return (
+                <div className="text-center py-20">
+                    <div className="bg-brand-50 rounded-full w-24 h-24 mx-auto flex items-center justify-center mb-6">
+                        <LIcon name="shopping-bag" className="w-10 h-10 text-brand-400" />
+                    </div>
+                    <h3 className="text-xl font-serif font-bold text-gray-800 mb-2">No Orders Yet</h3>
+                    <p className="text-gray-500 text-sm">Your purchase history will appear here once you place your first order.</p>
+                </div>
+            );
+
+            return (
+                <div className="space-y-4">
+                    {orders.map(order => {
+                        const st = getStatus(order.status);
+                        return (
+                            <div key={order.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                                {/* Order Header */}
+                                <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-4 bg-gray-50/70 border-b border-gray-100">
+                                    <div className="flex items-center space-x-6">
+                                        <div>
+                                            <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">Order ID</p>
+                                            <p className="font-bold text-brand-900 text-sm">#{order.id.toString().slice(0, 8).toUpperCase()}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">Placed On</p>
+                                            <p className="text-sm text-gray-700 font-medium">{new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                                        </div>
+                                    </div>
+                                    <div className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center ${st.color}`}>
+                                        <LIcon name={st.icon} className="w-3 h-3 mr-1.5" /> {st.label}
+                                    </div>
+                                </div>
+
+                                {/* Progress Stepper */}
+                                {(() => {
+                                    const steps = [
+                                        { key: 'CREATED', label: 'Order Placed', icon: 'shopping-bag' },
+                                        { key: 'PROCESSING', label: 'Processing', icon: 'loader' },
+                                        { key: 'SHIPPED', label: 'Shipped', icon: 'truck' },
+                                        { key: 'DELIVERED', label: 'Delivered', icon: 'check-circle' }
+                                    ];
+                                    const statusOrder = ['CREATED', 'PROCESSING', 'SHIPPED', 'DELIVERED'];
+                                    const currentIdx = statusOrder.indexOf(order.status);
+                                    return (
+                                        <div className="px-6 py-5 border-b border-gray-100">
+                                            <div className="flex items-center justify-between relative">
+                                                {steps.map((step, idx) => {
+                                                    const isDone = idx <= currentIdx;
+                                                    const isCurrent = idx === currentIdx;
+                                                    return (
+                                                        <React.Fragment key={step.key}>
+                                                            <div className="flex flex-col items-center z-10" style={{minWidth:'60px'}}>
+                                                                <div className={`w-9 h-9 rounded-full flex items-center justify-center mb-1.5 border-2 transition-all ${isDone ? 'bg-green-500 border-green-500 text-white' : 'bg-gray-100 border-gray-200 text-gray-400'} ${isCurrent ? 'ring-4 ring-green-100 scale-110' : ''}`}>
+                                                                    <LIcon name={step.icon} className="w-4 h-4" />
+                                                                </div>
+                                                                <span className={`text-[10px] font-semibold text-center leading-tight ${isDone ? 'text-green-700' : 'text-gray-400'}`}>{step.label}</span>
+                                                            </div>
+                                                            {idx < steps.length - 1 && (
+                                                                <div className="flex-1 h-0.5 mx-1 -mt-5">
+                                                                    <div className={`h-full rounded-full transition-all ${idx < currentIdx ? 'bg-green-400' : 'bg-gray-200'}`}></div>
+                                                                </div>
+                                                            )}
+                                                        </React.Fragment>
+                                                    );
+                                                })}
+                                            </div>
+                                            {order.tracking_number && (
+                                                <div className="mt-3 flex items-center justify-center">
+                                                    <span className="text-xs text-purple-700 bg-purple-50 px-3 py-1 rounded-full font-mono font-bold">
+                                                        <LIcon name="map-pin" className="w-3 h-3 inline mr-1" />Tracking: {order.tracking_number}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
+
+                                {/* Order Body */}
+                                <div className="px-6 py-4">
+                                    {/* Items */}
+                                    {order.items && order.items.length > 0 ? (
+                                        <div className="space-y-2 mb-4">
+                                            {order.items.map((item, idx) => (
+                                                <div key={idx} className="flex justify-between items-center text-sm">
+                                                    <span className="text-gray-700">{item.product_name || `Product #${item.product_id}`} <span className="text-gray-400">x{item.quantity}</span></span>
+                                                    <span className="font-semibold text-gray-800">{String.fromCharCode(8377)}{parseFloat(item.price_at_time || 0).toLocaleString()}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-gray-400 mb-4">Item details unavailable</p>
+                                    )}
+
+                                    {/* Footer Row */}
+                                    <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-gray-100">
+                                        <div className="flex items-center text-xs text-gray-500">
+                                            <LIcon name="clock" className="w-3 h-3 mr-1" />
+                                            <span>{new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">Total</p>
+                                            <p className="text-lg font-bold text-brand-900">{String.fromCharCode(8377)}{parseFloat(order.order_total).toLocaleString()}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            );
+        }
+
+        // --- Delivery Estimator Component ---
+        function DeliveryEstimator({ sellerId }) {
+            const [seller, setSeller] = useState(null);
+            const [userPincode, setUserPincode] = useState('');
+            const [estimate, setEstimate] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [calcLoading, setCalcLoading] = useState(false);
+
+            useEffect(() => {
+                if (!sellerId) {
+                    setLoading(false);
+                    return;
+                }
+                fetch(`${API_BASE}/users/public/${sellerId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if(data.success) setSeller(data.data);
+                        setLoading(false);
+                    }).catch(() => setLoading(false));
+            }, [sellerId]);
+
+            const calculateDelivery = async () => {
+                if(!userPincode || userPincode.length !== 6) return;
+                setCalcLoading(true);
+                try {
+                    const sellerPin = seller?.pincode || '400001'; // Default origin fallback
+                    
+                    // Fetch seller city
+                    const sellerRes = await fetch(`https://api.postalpincode.in/pincode/${sellerPin}`);
+                    const sellerData = await sellerRes.json();
+                    const sellerCity = sellerData[0]?.PostOffice?.[0]?.District || 'Mumbai';
+                    
+                    // Fetch buyer city
+                    const buyerRes = await fetch(`https://api.postalpincode.in/pincode/${userPincode}`);
+                    const buyerData = await buyerRes.json();
+                    const buyerCity = buyerData[0]?.PostOffice?.[0]?.District || 'Destination';
+
+                    // Mock Transit Logic
+                    const isLocal = sellerCity === buyerCity;
+                    const days = isLocal ? '1-2 Days' : '4-6 Days';
+
+                    setEstimate({ sellerCity, buyerCity, days });
+                } catch (e) {
+                    setEstimate({ sellerCity: 'Store', buyerCity: 'You', days: '3-5 Days' });
+                }
+                setCalcLoading(false);
+            }
+
+            if(loading) return <div className="animate-pulse bg-brand-50 h-10 w-full rounded mb-6"></div>;
+
+            return (
+                <div className="mb-8 p-4 border border-brand-200 rounded-xl bg-brand-50/30">
+                    <h5 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                        <LIcon name="store" className="w-4 h-4 mr-2 text-brand-600"/> 
+                        Sold by: <span className="text-brand-900 ml-1">{seller?.business_name || 'Ookielz First-Party'}</span>
+                    </h5>
+                    <div className="flex items-center space-x-2">
+                        <input 
+                            type="text" 
+                            placeholder="Enter deliver-to Pincode" 
+                            className="border border-brand-200 px-3 py-2 rounded-lg text-sm w-48 focus:outline-brand-500 bg-white shadow-inner"
+                            value={userPincode}
+                            onChange={(e)=>setUserPincode(e.target.value)}
+                            maxLength={6}
+                        />
+                        <button onClick={calculateDelivery} className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm flex items-center shadow-md">
+                            {calcLoading ? '...' : 'Check Transit'}
+                        </button>
+                    </div>
+                    {estimate && !calcLoading && (
+                        <div className="mt-4 bg-white p-4 rounded-lg border border-gray-100 shadow-sm animate-fade-in-up">
+                            <div className="flex justify-between text-xs text-gray-500 font-medium mb-1 relative items-center px-2">
+                                 <span className="flex flex-col items-center"><LIcon name="package" className="w-4 h-4 mb-1 text-brand-600"/> {estimate.sellerCity}</span>
+                                 <span className="border-t-2 border-dashed border-gray-300 flex-grow mx-4 relative top-[-10px]">
+                                     <LIcon name="truck" className="w-4 h-4 text-brand-400 absolute left-1/2 transform -translate-x-1/2 -top-2.5 bg-white px-1"/>
+                                 </span>
+                                 <span className="flex flex-col items-center"><LIcon name="home" className="w-4 h-4 mb-1 text-green-600"/> {estimate.buyerCity}</span>
+                            </div>
+                            <p className="text-sm font-bold text-gray-800 text-center mt-3 bg-brand-50 py-1 rounded mb-1">Expected Delivery: {estimate.days}</p>
+                        </div>
+                    )}
+                </div>
+            )
+        }
 
         // --- Initialize App ---
         const root = ReactDOM.createRoot(document.getElementById('root'));

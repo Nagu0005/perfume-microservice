@@ -10,6 +10,7 @@ class OrderRepository {
                 order_total NUMERIC(10, 2) NOT NULL,
                 status VARCHAR(50) DEFAULT 'CREATED',
                 tracking_number VARCHAR(100),
+                shipping_address TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `;
@@ -32,11 +33,11 @@ class OrderRepository {
     }
 
     async create(orderData) {
-        const { checkout_id, user_id, order_total } = orderData;
+        const { checkout_id, user_id, order_total, shipping_address } = orderData;
         const result = await db.query(
-            `INSERT INTO orders (checkout_id, user_id, order_total, status) 
-             VALUES ($1, $2, $3, 'CREATED') RETURNING *`,
-            [checkout_id, user_id, order_total]
+            `INSERT INTO orders (checkout_id, user_id, order_total, status, shipping_address) 
+             VALUES ($1, $2, $3, 'CREATED', $4) RETURNING *`,
+            [checkout_id, user_id, order_total, shipping_address || null]
         );
         return result.rows[0];
     }

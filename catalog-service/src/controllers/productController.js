@@ -37,7 +37,8 @@ class ProductController {
 
     async createProduct(req, res) {
         try {
-            const newProduct = await productService.createProduct(req.body);
+            const seller_id = req.headers['x-user-id'] ? parseInt(req.headers['x-user-id']) : null;
+            const newProduct = await productService.createProduct({ ...req.body, seller_id });
             res.status(201).json({ success: true, data: newProduct });
         } catch (error) {
             console.error('Error in createProduct:', error.message);

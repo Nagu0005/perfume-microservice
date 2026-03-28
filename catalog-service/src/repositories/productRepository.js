@@ -15,6 +15,7 @@ class ProductRepository {
                 gst_percentage NUMERIC(5, 2) NOT NULL,
                 image_url TEXT,
                 description TEXT,
+                seller_id INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `;
@@ -37,11 +38,11 @@ class ProductRepository {
     }
 
     async create(product) {
-        const { name, brand, category, base_price, gst_percentage, image_url, description } = product;
+        const { name, brand, category, base_price, gst_percentage, image_url, description, seller_id } = product;
         const result = await db.query(
-            `INSERT INTO products (name, brand, category, base_price, gst_percentage, image_url, description) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-            [name, brand, category, base_price, gst_percentage, image_url, description]
+            `INSERT INTO products (name, brand, category, base_price, gst_percentage, image_url, description, seller_id) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+            [name, brand, category, base_price, gst_percentage, image_url, description, seller_id]
         );
         return result.rows[0];
     }

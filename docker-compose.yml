@@ -6,8 +6,8 @@ services:
     image: postgres:15-alpine
     container_name: perfume_postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASS}
     ports:
       - "5432:5432"
     volumes:
@@ -36,6 +36,8 @@ services:
     environment:
       - PORT=8090
       - NODE_ENV=production
+      - CORS_ORIGIN=*
+      - JWT_SECRET=${JWT_SECRET}
     depends_on:
       catalog-service:
         condition: service_started
@@ -78,10 +80,12 @@ services:
       - PORT=7010
       - NODE_ENV=production
       - DB_HOST=db
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASS}
       - DB_NAME=user_db
-      - JWT_SECRET=super-secret-jwt-key-aurora
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_EMAILS=${ADMIN_EMAILS}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - EMAIL_SERVICE_URL=http://email-service:7005/api/v1/emails
     depends_on:
       db:
@@ -105,8 +109,8 @@ services:
       - PORT=7006
       - NODE_ENV=production
       - DB_HOST=db
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASS}
       - DB_NAME=catalog_db
     depends_on:
       db:
@@ -129,8 +133,8 @@ services:
       - PORT=7001
       - NODE_ENV=production
       - DB_HOST=db
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASS}
       - DB_NAME=cart_db
     depends_on:
       db:
@@ -153,8 +157,8 @@ services:
       - PORT=7004
       - NODE_ENV=production
       - DB_HOST=db
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASS}
       - DB_NAME=checkout_db
     depends_on:
       db:
@@ -177,8 +181,8 @@ services:
       - PORT=5003
       - NODE_ENV=production
       - DB_HOST=db
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASS}
       - DB_NAME=order_db
     depends_on:
       db:
@@ -201,8 +205,8 @@ services:
       - PORT=7003
       - NODE_ENV=production
       - DB_HOST=db
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASS}
       - DB_NAME=payment_db
     depends_on:
       db:
@@ -225,8 +229,8 @@ services:
       - PORT=7008
       - NODE_ENV=production
       - DB_HOST=db
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASS}
       - DB_NAME=shipping_db
     depends_on:
       db:
@@ -249,14 +253,14 @@ services:
       - PORT=7005
       - NODE_ENV=production
       - DB_HOST=db
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASS}
       - DB_NAME=email_db
-      - SMTP_HOST=smtp.ethereal.email
+      - SMTP_HOST=smtp.gmail.com
       - SMTP_PORT=465
       - SMTP_SECURE=true
-      - SMTP_USER=yuz25warufuixewz@ethereal.email
-      - SMTP_PASS=ttAXXqHj24Nn38M1Jd
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
     depends_on:
       db:
         condition: service_healthy
@@ -278,8 +282,8 @@ services:
       - PORT=7007
       - NODE_ENV=production
       - DB_HOST=db
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASS}
       - DB_NAME=recommendation_db
     depends_on:
       db:
@@ -302,8 +306,8 @@ services:
       - PORT=7002
       - NODE_ENV=production
       - DB_HOST=db
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASS}
       - DB_NAME=ad_db
     depends_on:
       db:
@@ -326,8 +330,8 @@ services:
       - PORT=7009
       - NODE_ENV=production
       - DB_HOST=db
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASS}
       - DB_NAME=currency_db
     depends_on:
       db:

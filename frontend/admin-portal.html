@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aurora Perfumes - Admin Portal</title>
+    <title>Ookielz - Admin Portal</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
@@ -14,6 +14,8 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 
     <script>
         tailwind.config = {
@@ -60,13 +62,34 @@
         // --- Main App Component ---
         function AdminPortal() {
             const [activeTab, setActiveTab] = useState('dashboard');
+            const [token, setToken] = useState(localStorage.getItem('admin_token'));
+            const [adminUser, setAdminUser] = useState(JSON.parse(localStorage.getItem('admin_user')) || null);
+
+            useEffect(() => {
+                if (!token) return;
+                // Auto Google Signin init if token expires? Not strictly needed for basic flow.
+            }, [token]);
+
+            const handleLogout = () => {
+                localStorage.removeItem('admin_token');
+                localStorage.removeItem('admin_user');
+                setToken(null);
+                setAdminUser(null);
+            };
+
+            if (!token) {
+                return <LoginScreen setToken={setToken} setAdminUser={setAdminUser} />;
+            }
 
             return (
                 <div className="flex h-screen overflow-hidden bg-gray-50">
                     {/* Sidebar */}
                     <aside className="w-64 bg-brand-900 text-white flex flex-col shadow-xl z-10">
                         <div className="p-6">
-                            <h1 className="text-2xl font-bold tracking-wider text-brand-100 italic">Aurora<span className="text-brand-500">Admin</span></h1>
+                            <h1 className="text-2xl font-bold tracking-wider text-brand-100 italic flex items-center">
+                                <img src="./logo.jpg" alt="Ookielz" className="h-8 w-auto object-contain mr-2 bg-white/20 p-1 rounded" />
+                                <span className="text-brand-500">Admin</span>
+                            </h1>
                             <p className="text-sm text-brand-500 mt-1">Management Portal</p>
                         </div>
                         <nav className="flex-1 px-4 space-y-2 mt-8">
@@ -85,6 +108,27 @@
                                 <span className="font-medium">Products</span>
                             </button>
                             <button
+                                onClick={() => setActiveTab('orders')}
+                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'orders' ? 'bg-brand-600 text-white shadow-md' : 'text-brand-100 hover:bg-brand-600/50'}`}
+                            >
+                                <i data-lucide="clipboard-list" className="w-5 h-5"></i>
+                                <span className="font-medium">Orders</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('sellers')}
+                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'sellers' ? 'bg-brand-600 text-white shadow-md' : 'text-brand-100 hover:bg-brand-600/50'}`}
+                            >
+                                <i data-lucide="users" className="w-5 h-5"></i>
+                                <span className="font-medium">Sellers / Admins</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('store')}
+                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'store' ? 'bg-brand-600 text-white shadow-md' : 'text-brand-100 hover:bg-brand-600/50'}`}
+                            >
+                                <i data-lucide="store" className="w-5 h-5"></i>
+                                <span className="font-medium">Store Profile</span>
+                            </button>
+                            <button
                                 onClick={() => setActiveTab('analytics')}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'analytics' ? 'bg-brand-600 text-white shadow-md' : 'text-brand-100 hover:bg-brand-600/50'}`}
                             >
@@ -93,9 +137,14 @@
                             </button>
                         </nav>
                         <div className="p-4">
-                            <div className="bg-brand-600/30 rounded-lg p-4 text-sm">
-                                <p className="text-brand-100">Logged in as</p>
-                                <p className="font-semibold text-white">Admin User</p>
+                            <div className="bg-brand-600/30 rounded-lg p-4 text-sm flex justify-between items-center">
+                                <div>
+                                    <p className="text-brand-100 text-xs">Logged in as</p>
+                                    <p className="font-semibold text-white truncate w-24">{adminUser?.name || 'Admin'}</p>
+                                </div>
+                                <button onClick={handleLogout} className="text-red-300 hover:text-red-100" title="Logout">
+                                    <i data-lucide="log-out" className="w-5 h-5"></i>
+                                </button>
                             </div>
                         </div>
                     </aside>
@@ -111,23 +160,84 @@
                                 <button className="p-2 bg-white rounded-full shadow-sm hover:shadow-md transition">
                                     <i data-lucide="bell" className="w-5 h-5 text-gray-500"></i>
                                 </button>
-                                <img src="https://ui-avatars.com/api/?name=Admin+User&background=b48576&color=fff" alt="Admin" className="w-10 h-10 rounded-full shadow-md border-2 border-white" />
+                                <img src={`https://ui-avatars.com/api/?name=${adminUser?.name || 'Admin'}&background=b48576&color=fff`} alt="Admin" className="w-10 h-10 rounded-full shadow-md border-2 border-white" />
                             </div>
                         </header>
 
                         {/* Route Content rendering */}
                         <div className="animate-fade-in-up transition-all duration-300">
-                            {activeTab === 'dashboard' && <Dashboard />}
-                            {activeTab === 'products' && <ProductManagement />}
-                            {activeTab === 'analytics' && <Analytics />}
+                            {activeTab === 'dashboard' && <Dashboard token={token} />}
+                            {activeTab === 'products' && <ProductManagement token={token} />}
+                            {activeTab === 'orders' && <OrderManagement token={token} />}
+                            {activeTab === 'sellers' && <ManageSellers token={token} />}
+                            {activeTab === 'store' && <StoreProfile token={token} />}
+                            {activeTab === 'analytics' && <Analytics token={token} />}
                         </div>
                     </main>
                 </div>
             );
         }
 
+        // --- Login Screen ---
+        function LoginScreen({ setToken, setAdminUser }) {
+            const [error, setError] = useState('');
+            const GOOGLE_CLIENT_ID = "506820001325-q4r1tlgiut1uirgsrgvvmaosj47qkj3i.apps.googleusercontent.com"; 
+
+            useEffect(() => {
+                // Initialize Google Sign-In
+                window.onload = () => {
+                    if (window.google) {
+                        window.google.accounts.id.initialize({
+                            client_id: GOOGLE_CLIENT_ID,
+                            callback: handleCredentialResponse
+                        });
+                        window.google.accounts.id.renderButton(
+                            document.getElementById("google-signin-btn"),
+                            { theme: "outline", size: "large", width: 300 } 
+                        );
+                    }
+                };
+            }, []);
+
+            const handleCredentialResponse = async (response) => {
+                try {
+                    const res = await fetch(`${API_BASE}/users/admin/google`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ credential: response.credential })
+                    });
+                    
+                    const data = await res.json();
+                    if (data.success) {
+                        localStorage.setItem('admin_token', data.token);
+                        localStorage.setItem('admin_user', JSON.stringify(data.data));
+                        setToken(data.token);
+                        setAdminUser(data.data);
+                    } else {
+                        setError(data.error || 'Unauthorized Access. You must be an authorized seller.');
+                    }
+                } catch (err) {
+                    setError('Server error during authentication.');
+                }
+            };
+
+            return (
+                <div className="flex h-screen items-center justify-center bg-gray-50 backdrop-blur-md">
+                    <div className="glass-panel p-10 rounded-3xl shadow-2xl flex flex-col items-center max-w-md w-full text-center">
+                        <img src="./logo.jpg" alt="Ookielz" className="h-20 w-auto mb-6 rounded shadow-md" />
+                        <h2 className="text-3xl font-bold text-gray-800 mb-2">Admin Portal</h2>
+                        <p className="text-gray-500 mb-8">Secure Access Required</p>
+                        
+                        <div id="google-signin-btn" className="mb-4"></div>
+                        
+                        {error && <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm w-full font-medium shadow-inner">{error}</div>}
+                    </div>
+                </div>
+            );
+        }
+
         // --- Dashboard View ---
-        function Dashboard() {
+        function Dashboard({ token }) {
             const [stats, setStats] = useState({
                 todaySales: 0,
                 totalOrders: 0,
@@ -142,9 +252,9 @@
                 const fetchDashboardData = async () => {
                     try {
                         setLoading(true);
-                        // Fetch Orders and Products
+                        // Fetch Orders and Products (with Auth)
                         const [ordersRes, productsRes] = await Promise.all([
-                            fetch(`${PROTO_HOST}/orders`),
+                            fetch(`${PROTO_HOST}/orders`, { headers: { 'Authorization': `Bearer ${token}` } }),
                             fetch(`${API_BASE}/catalog`)
                         ]);
 
@@ -165,8 +275,8 @@
 
                         orders.forEach(order => {
                             const orderTime = new Date(order.created_at).getTime();
-                            if (orderTime >= startOfMonth) monthSales += parseFloat(order.total_amount);
-                            if (orderTime >= startOfDay) todaySales += parseFloat(order.total_amount);
+                            if (orderTime >= startOfMonth) monthSales += parseFloat(order.order_total);
+                            if (orderTime >= startOfDay) todaySales += parseFloat(order.order_total);
 
                             // Map product sales
                             order.items?.forEach(item => {
@@ -234,9 +344,9 @@
                                     <tbody className="text-sm">
                                         {stats.recentOrders.length > 0 ? stats.recentOrders.map(order => (
                                             <tr key={order.id} className="border-t border-gray-100">
-                                                <td className="py-3 font-medium text-brand-600">#ORD-{order.id.slice(0, 6).toUpperCase()}</td>
+                                                <td className="py-3 font-medium text-brand-600">#ORD-{order.id.toString().slice(0, 6).toUpperCase()}</td>
                                                 <td className="py-3 text-gray-500">{new Date(order.created_at).toLocaleString()}</td>
-                                                <td className="py-3 font-semibold">₹{parseFloat(order.total_amount).toLocaleString()}</td>
+                                                <td className="py-3 font-semibold">₹{parseFloat(order.order_total).toLocaleString()}</td>
                                                 <td className="py-3">
                                                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${order.status === 'SHIPPED' ? 'bg-green-100 text-green-700' :
                                                         order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
@@ -303,7 +413,7 @@
         }
 
         // --- Product Management View ---
-        function ProductManagement() {
+        function ProductManagement({ token }) {
             const [products, setProducts] = useState([]);
             const [loading, setLoading] = useState(true);
             const [error, setError] = useState(null);
@@ -366,7 +476,10 @@
 
                     const res = await fetch(url, {
                         method,
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
                         body: JSON.stringify(payload)
                     });
 
@@ -400,7 +513,10 @@
             const handleDelete = async (id) => {
                 if (confirm('Are you sure you want to delete this product?')) {
                     try {
-                        const res = await fetch(`${API_BASE}/catalog/${id}`, { method: 'DELETE' });
+                        const res = await fetch(`${API_BASE}/catalog/${id}`, { 
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
                         const data = await res.json();
                         if (data.success) fetchProducts();
                     } catch (err) {
@@ -607,6 +723,122 @@
             );
         }
 
+        // --- Manage Sellers View ---
+        function ManageSellers({ token }) {
+            const [users, setUsers] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                fetchUsers();
+            }, []);
+
+            const fetchUsers = async () => {
+                try {
+                    setLoading(true);
+                    const res = await fetch(`${API_BASE}/users/admin/users`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        setUsers(data.data);
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch users');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handlePromote = async (id, name) => {
+                if (confirm(`Are you sure you want to promote ${name} to a Seller/Admin?`)) {
+                    try {
+                        const res = await fetch(`${API_BASE}/users/admin/users/${id}/promote`, {
+                            method: 'PUT',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            fetchUsers();
+                        } else {
+                            alert(data.error || 'Failed to promote');
+                        }
+                    } catch (err) {
+                        alert('Server error promoting user');
+                    }
+                }
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center glass-panel rounded-2xl p-4 px-6 mb-6">
+                        <div>
+                            <h3 className="text-xl font-bold text-gray-800 flex items-center">
+                                <i data-lucide="shield-check" className="w-6 h-6 mr-2 text-brand-600"></i>
+                                Seller Privilege Management
+                            </h3>
+                            <p className="text-sm text-gray-500 mt-1">Review registered customers and upgrade them to Sellers to allow them to manage inventory.</p>
+                        </div>
+                    </div>
+
+                    <div className="glass-panel rounded-2xl overflow-hidden shadow-sm animate-fade-in-up">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50/80">
+                                <tr>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">User</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Joined</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Role</th>
+                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-100">
+                                {loading ? (
+                                    <tr><td colSpan="4" className="text-center py-8 text-gray-500">Loading users...</td></tr>
+                                ) : users.map(user => (
+                                    <tr key={user.id} className="hover:bg-brand-50/30 transition-colors">
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center">
+                                                <div className="flex-shrink-0 h-10 w-10">
+                                                    <img className="h-10 w-10 rounded-full shadow-sm" src={`https://ui-avatars.com/api/?name=${user.name}&background=random`} alt="" />
+                                                </div>
+                                                <div className="ml-4">
+                                                    <div className="text-sm font-bold text-gray-900">{user.name}</div>
+                                                    <div className="text-sm text-gray-500">{user.email}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                            {new Date(user.created_at).toLocaleDateString()}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            {user.is_admin ? (
+                                                <span className="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full bg-brand-100 text-brand-800">
+                                                    Seller / Admin
+                                                </span>
+                                            ) : (
+                                                <span className="px-3 py-1 inline-flex text-xs leading-5 font-medium rounded-full bg-gray-100 text-gray-600">
+                                                    Customer
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            {!user.is_admin && (
+                                                <button 
+                                                    onClick={() => handlePromote(user.id, user.name)} 
+                                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-green-600 hover:bg-green-700 transition"
+                                                >
+                                                    <i data-lucide="arrow-up-circle" className="w-4 h-4 mr-1"></i> Upgrade to Seller
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        }
+
         // --- Analytics View ---
         function Analytics() {
             return (
@@ -726,6 +958,294 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            );
+        }
+        // --- Order Management ---
+        function OrderManagement({ token }) {
+            const [orders, setOrders] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [updating, setUpdating] = useState(null);
+
+            const fetchOrders = async () => {
+                try {
+                    setLoading(true);
+                    const res = await fetch(`${PROTO_HOST}/orders`, { headers: { 'Authorization': `Bearer ${token}` } });
+                    const data = await res.json();
+                    if (data.success) setOrders(data.data || []);
+                } catch(e) { console.error('Failed to fetch orders:', e); }
+                finally { setLoading(false); }
+            };
+
+            useEffect(() => { fetchOrders(); }, []);
+
+            const updateStatus = async (orderId, newStatus, trackingNumber) => {
+                setUpdating(orderId);
+                try {
+                    const body = { status: newStatus };
+                    if (trackingNumber) body.tracking_number = trackingNumber;
+                    const res = await fetch(`${PROTO_HOST}/orders/${orderId}/status`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify(body)
+                    });
+                    const data = await res.json();
+                    if (data.success) fetchOrders();
+                    else alert('Error: ' + (data.error || 'Failed'));
+                } catch(e) { alert('Failed to update status'); }
+                finally { setUpdating(null); }
+            };
+
+            const handleShip = (orderId) => {
+                const tracking = prompt('Enter tracking number (required):');
+                if (tracking && tracking.trim()) {
+                    updateStatus(orderId, 'SHIPPED', tracking.trim());
+                }
+            };
+
+            const statusBadge = (status) => {
+                const map = {
+                    'CREATED': 'bg-gray-100 text-gray-700',
+                    'PROCESSING': 'bg-blue-100 text-blue-700',
+                    'SHIPPED': 'bg-purple-100 text-purple-700',
+                    'DELIVERED': 'bg-green-100 text-green-700'
+                };
+                return map[status] || map['CREATED'];
+            };
+
+            if (loading) return <div className="p-10 text-center text-gray-500">Loading Orders...</div>;
+
+            if (orders.length === 0) return (
+                <div className="text-center py-20">
+                    <i data-lucide="inbox" className="w-16 h-16 text-gray-300 mx-auto mb-4"></i>
+                    <p className="text-gray-500 text-lg font-medium">No orders yet</p>
+                </div>
+            );
+
+            return (
+                <div className="space-y-4">
+                    {orders.map(order => (
+                        <div key={order.id} className="glass-panel rounded-2xl overflow-hidden">
+                            {/* Header */}
+                            <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-4 bg-gray-50 border-b border-gray-100">
+                                <div className="flex items-center space-x-8">
+                                    <div>
+                                        <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">Order</p>
+                                        <p className="font-bold text-brand-800">#ORD-{order.id}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">Date</p>
+                                        <p className="text-sm text-gray-700">{new Date(order.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">Amount</p>
+                                        <p className="text-sm font-bold text-gray-900">{String.fromCharCode(8377)}{parseFloat(order.order_total).toLocaleString()}</p>
+                                    </div>
+                                </div>
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${statusBadge(order.status)}`}>
+                                    {order.status}
+                                </span>
+                            </div>
+
+                            {/* Progress Stepper */}
+                            {(() => {
+                                const steps = [
+                                    { key: 'CREATED', label: 'Order Placed', icon: 'shopping-bag' },
+                                    { key: 'PROCESSING', label: 'Processing', icon: 'loader' },
+                                    { key: 'SHIPPED', label: 'Shipped', icon: 'truck' },
+                                    { key: 'DELIVERED', label: 'Delivered', icon: 'check-circle' }
+                                ];
+                                const statusOrder = ['CREATED', 'PROCESSING', 'SHIPPED', 'DELIVERED'];
+                                const currentIdx = statusOrder.indexOf(order.status);
+                                return (
+                                    <div className="px-6 py-5 border-b border-gray-100 bg-white">
+                                        <div className="flex items-center justify-between relative">
+                                            {steps.map((step, idx) => {
+                                                const isDone = idx <= currentIdx;
+                                                const isCurrent = idx === currentIdx;
+                                                return (
+                                                    <React.Fragment key={step.key}>
+                                                        <div className="flex flex-col items-center z-10" style={{minWidth:'70px'}}>
+                                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1.5 border-2 transition-all ${isDone ? 'bg-green-500 border-green-500 text-white shadow-sm' : 'bg-gray-100 border-gray-200 text-gray-400'} ${isCurrent ? 'ring-4 ring-green-100 scale-110' : ''}`}>
+                                                                <i data-lucide={step.icon} className="w-4 h-4"></i>
+                                                            </div>
+                                                            <span className={`text-[10px] font-semibold text-center leading-tight ${isDone ? 'text-green-700' : 'text-gray-400'}`}>{step.label}</span>
+                                                        </div>
+                                                        {idx < steps.length - 1 && (
+                                                            <div className="flex-1 h-0.5 mx-1 -mt-5">
+                                                                <div className={`h-full rounded-full transition-all ${idx < currentIdx ? 'bg-green-400' : 'bg-gray-200'}`}></div>
+                                                            </div>
+                                                        )}
+                                                    </React.Fragment>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Body */}
+                            <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {/* Shipping Info */}
+                                <div className="md:col-span-2">
+                                    <p className="text-xs uppercase tracking-widest text-gray-400 font-semibold mb-2 flex items-center">
+                                        <i data-lucide="map-pin" className="w-3 h-3 mr-1"></i> Shipping Address
+                                    </p>
+                                    <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3 border border-gray-100">
+                                        {order.shipping_address || 'Not provided (legacy order)'}
+                                    </p>
+                                    {order.tracking_number && (
+                                        <div className="mt-3">
+                                            <p className="text-xs uppercase tracking-widest text-gray-400 font-semibold mb-1">Tracking #</p>
+                                            <p className="text-sm font-mono font-bold text-purple-700 bg-purple-50 px-3 py-1.5 rounded-lg inline-block">{order.tracking_number}</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex flex-col justify-center">
+                                    <p className="text-xs uppercase tracking-widest text-gray-400 font-semibold mb-3 flex items-center">
+                                        <i data-lucide="settings" className="w-3 h-3 mr-1"></i> Next Action
+                                    </p>
+                                    {order.status === 'CREATED' && (
+                                        <button onClick={() => updateStatus(order.id, 'PROCESSING')} disabled={updating === order.id}
+                                            className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center">
+                                            <i data-lucide="play" className="w-4 h-4 mr-2"></i>
+                                            {updating === order.id ? 'Updating...' : 'Start Processing'}
+                                        </button>
+                                    )}
+                                    {order.status === 'PROCESSING' && (
+                                        <button onClick={() => handleShip(order.id)} disabled={updating === order.id}
+                                            className="w-full px-4 py-2.5 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition disabled:opacity-50 flex items-center justify-center">
+                                            <i data-lucide="truck" className="w-4 h-4 mr-2"></i>
+                                            {updating === order.id ? 'Updating...' : 'Ship Order'}
+                                        </button>
+                                    )}
+                                    {order.status === 'SHIPPED' && (
+                                        <button onClick={() => updateStatus(order.id, 'DELIVERED')} disabled={updating === order.id}
+                                            className="w-full px-4 py-2.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition disabled:opacity-50 flex items-center justify-center">
+                                            <i data-lucide="check" className="w-4 h-4 mr-2"></i>
+                                            {updating === order.id ? 'Updating...' : 'Mark Delivered'}
+                                        </button>
+                                    )}
+                                    {order.status === 'DELIVERED' && (
+                                        <div className="text-center py-2 bg-green-50 rounded-lg border border-green-100">
+                                            <i data-lucide="check-circle" className="w-5 h-5 text-green-600 mx-auto mb-1"></i>
+                                            <span className="text-sm text-green-700 font-semibold">Order Complete</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
+        // --- Store Profile ---
+        function StoreProfile({ token }) {
+            const [profile, setProfile] = useState({ business_name: '', business_address: '', pincode: '' });
+            const [message, setMessage] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+
+            useEffect(() => {
+                fetch(`${API_BASE}/users/profile`, { headers: { 'Authorization': `Bearer ${token}` } })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success && data.data) {
+                            setProfile({
+                                business_name: data.data.business_name || '',
+                                business_address: data.data.business_address || '',
+                                pincode: data.data.pincode || ''
+                            });
+                        }
+                    }).catch(err => console.error(err));
+            }, [token]);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setIsLoading(true);
+                setMessage('');
+                try {
+                    const res = await fetch(`${API_BASE}/users/profile`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(profile)
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        setMessage('Store Profile Updated Successfully!');
+                    } else {
+                        setMessage(`Error: ${data.error}`);
+                    }
+                } catch (err) {
+                    setMessage('Failed to update profile.');
+                }
+                setIsLoading(false);
+            };
+
+            return (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 max-w-2xl mx-auto mt-10">
+                    <div className="flex items-center mb-6 border-b pb-4">
+                        <i data-lucide="building-2" className="w-8 h-8 text-brand-600 mr-3"></i>
+                        <h3 className="text-2xl font-bold text-gray-800">Store Profile</h3>
+                    </div>
+                    <p className="text-gray-500 mb-6 text-sm">Update your store details to ensure accurate delivery estimates and proper branding on the storefront.</p>
+                    
+                    {message && (
+                        <div className={`p-4 mb-6 rounded-md ${message.includes('Error') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
+                            {message}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Business/Store Name *</label>
+                            <input 
+                                required 
+                                type="text" 
+                                value={profile.business_name} 
+                                onChange={e => setProfile({...profile, business_name: e.target.value})}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition"
+                                placeholder="e.g. Perfume Paradise Mumbai" 
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Dispatch Address</label>
+                            <textarea 
+                                value={profile.business_address} 
+                                onChange={e => setProfile({...profile, business_address: e.target.value})}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition h-24"
+                                placeholder="123 Scent Avenue..." 
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Dispatch Pincode *</label>
+                            <input 
+                                required 
+                                type="text" 
+                                value={profile.pincode} 
+                                onChange={e => setProfile({...profile, pincode: e.target.value})}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition max-w-xs"
+                                placeholder="e.g. 400001" 
+                                pattern="[0-9]{6}"
+                                title="6 digit valid Indian Pincode"
+                            />
+                            <p className="text-xs text-brand-500 mt-1"><i data-lucide="info" className="w-3 h-3 inline"></i> Used to calculate shipping transit times.</p>
+                        </div>
+                        <div className="pt-4 flex justify-end">
+                            <button 
+                                type="submit" 
+                                disabled={isLoading}
+                                className="bg-brand-600 hover:bg-brand-700 text-white font-medium py-2 px-6 rounded-lg transition-colors flex items-center"
+                            >
+                                {isLoading ? 'Saving...' : <span><i data-lucide="save" className="w-4 h-4 mr-2"></i> Save Profile</span>}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             );
         }

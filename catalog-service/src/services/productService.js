@@ -56,7 +56,8 @@ class ProductService {
             base_price: productData.base_price,
             gst_percentage: productData.gst_percentage || 18, // Default GST to 18% as per Indian norms for perfumes
             image_url: productData.image_url || '',
-            description: productData.description || ''
+            description: productData.description || '',
+            seller_id: productData.seller_id || null
         });
 
         return this.calculatePricing(newProduct);
