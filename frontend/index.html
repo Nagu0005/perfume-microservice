@@ -133,6 +133,19 @@
         const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         const API_BASE = isLocal ? 'http://localhost:8090/api/v1' : window.location.protocol + '//' + window.location.hostname + ':8090/api/v1';
 
+        const SVG_ICONS = {
+            'heart': '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.505 4.045 3 5.5l7 7Z" />',
+            'trash-2': '<path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2m-6 5v6m4-6v6" />',
+            'shopping-bag': '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4ZM3 6h18M16 10a4 4 0 0 1-8 0" />',
+            'shopping-cart': '<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
+            'x': '<path d="M18 6 6 18M6 6l12 12" />',
+            'chevron-right': '<path d="m9 18 6-6-6-6" />',
+            'arrow-left': '<path d="m12 19-7-7 7-7M5 12h14" />',
+            'check-circle': '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="m9 11 3 3L22 4" />',
+            'lock': '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+            'shield-check': '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>'
+        };
+
         // React-safe Lucide Icon component - renders icons without conflicting with React's DOM
         function LIcon({ name, className = "" }) {
             const ref = useRef(null);
@@ -140,29 +153,64 @@
                 if (!ref.current) return;
                 ref.current.innerHTML = '';
                 try {
-                    const iconData = lucide.icons[name];
-                    if (!iconData) return;
-                    const [tag, attrs, children] = iconData;
-                    const svg = document.createElementNS('http://www.w3.org/2000/svg', tag);
-                    Object.entries(attrs).forEach(([k, v]) => svg.setAttribute(k, v));
-                    svg.removeAttribute('class');
-                    // Parse className to get width/height
+                    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                    svg.setAttribute('viewBox', '0 0 24 24');
+                    svg.setAttribute('fill', 'none');
+                    svg.setAttribute('stroke', 'currentColor');
+                    svg.setAttribute('stroke-width', '2');
+                    svg.setAttribute('stroke-linecap', 'round');
+                    svg.setAttribute('stroke-linejoin', 'round');
+                    
+                    // Priority 1: Internal SVG paths for mission-critical icons
+                    if (SVG_ICONS[name]) {
+                        svg.innerHTML = SVG_ICONS[name];
+                    } 
+                    // Priority 2: Lucide library lookup
+                    else if (typeof lucide !== 'undefined') {
+                        let data = lucide.icons ? lucide.icons[name] : lucide[name];
+                        if (!data && name.includes('-')) {
+                            const camel = name.replace(/-([a-z])/g, g => g[1].toUpperCase());
+                            data = lucide.icons ? lucide.icons[camel] : lucide[camel];
+                        }
+                        if (!data) {
+                            const title = name.charAt(0).toUpperCase() + name.slice(1).replace(/-([a-z])/g, g => g[1].toUpperCase());
+                            data = lucide[title];
+                        }
+                        
+                        if (data && Array.isArray(data)) {
+                            const [,, children] = data;
+                            children.forEach(child => {
+                                const [tag, attrs] = child;
+                                const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+                                Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+                                svg.appendChild(el);
+                            });
+                        }
+                    }
+
+                    // Handle Fill logic
+                    if (className.includes('fill-')) {
+                        Array.from(svg.children).forEach(child => {
+                            if (child.tagName === 'path' || child.tagName === 'circle' || child.tagName === 'rect' || child.tagName === 'polygon') {
+                                child.setAttribute('fill', 'currentColor');
+                            }
+                        });
+                    }
+
+                    // Set size from className
                     const sizeMatch = className.match(/w-(\d+)/);
                     if (sizeMatch) {
                         const rem = parseInt(sizeMatch[1]) * 0.25;
                         svg.setAttribute('width', `${rem}rem`);
                         svg.setAttribute('height', `${rem}rem`);
                     }
-                    if (children && Array.isArray(children)) {
-                        children.forEach(child => {
-                            const [childTag, childAttrs] = child;
-                            const el = document.createElementNS('http://www.w3.org/2000/svg', childTag);
-                            Object.entries(childAttrs || {}).forEach(([k, v]) => el.setAttribute(k, v));
-                            svg.appendChild(el);
-                        });
-                    }
+                    
                     ref.current.appendChild(svg);
-                } catch (e) { console.warn('Icon error:', name, e); }
+                } catch (e) { 
+                    console.warn('Icon error:', name, e); 
+                    // Fallback to text for extreme cases
+                    ref.current.innerText = '';
+                }
             }, [name, className]);
             return <span ref={ref} className={`inline-flex items-center justify-center ${className}`} />;
         }
@@ -206,6 +254,16 @@
             const [checkoutLoading, setCheckoutLoading] = useState(false);
             const [checkoutResult, setCheckoutResult] = useState(null);
             const [shippingAddress, setShippingAddress] = useState({ name: '', address: '', city: '', pincode: '', phone: '' });
+            const [paymentMethod, setPaymentMethod] = useState('Online Payment');
+            const [wishlist, setWishlist] = useState(() => {
+                const savedArr = localStorage.getItem('aurora_wishlist');
+                return savedArr ? JSON.parse(savedArr) : [];
+            });
+
+            // Persist wishlist changes
+            useEffect(() => {
+                localStorage.setItem('aurora_wishlist', JSON.stringify(wishlist));
+            }, [wishlist]);
 
             // Pre-fill shipping address from user's DB profile
             useEffect(() => {
@@ -291,6 +349,14 @@
             const addToCart = (product, quantity = 1) => {
                 setCart(prev => {
                     const existing = prev.find(item => item.id === product.id);
+                    const currentQty = existing ? existing.qty : 0;
+                    const maxAvailable = product.stock_quantity || 0;
+
+                    if (currentQty + quantity > maxAvailable) {
+                        alert(`Sorry, only ${maxAvailable} units of ${product.name} are in stock.`);
+                        return prev;
+                    }
+
                     if (existing) {
                         return prev.map(item => item.id === product.id ? { ...item, qty: item.qty + quantity } : item);
                     }
@@ -304,7 +370,14 @@
                 setCart(prev => prev.map(item => {
                     if (item.id === id) {
                         const newQty = item.qty + delta;
-                        return newQty > 0 ? { ...item, qty: newQty } : item;
+                        const maxAvailable = item.stock_quantity || 0;
+                        
+                        if (delta > 0 && newQty > maxAvailable) {
+                            alert(`Maximum stock reached for ${item.name}.`);
+                            return item;
+                        }
+                        
+                        return { ...item, qty: newQty };
                     }
                     return item;
                 }).filter(item => item.qty > 0));
@@ -312,6 +385,17 @@
 
             const removeFromCart = (id) => {
                 setCart(prev => prev.filter(item => item.id !== id));
+            };
+
+            const toggleWishlist = (product) => {
+                setWishlist(prev => {
+                    const exists = prev.find(p => p.id === product.id);
+                    if (exists) {
+                        return prev.filter(p => p.id !== product.id);
+                    } else {
+                        return [...prev, product];
+                    }
+                });
             };
 
             const cartCount = cart.reduce((acc, item) => acc + item.qty, 0);
@@ -390,7 +474,8 @@
                             price: item.base_price + (item.base_price * (item.gst_percentage / 100)),
                             quantity: item.qty
                         })),
-                        shipping_address: `${shippingAddress.name}, ${shippingAddress.address}, ${shippingAddress.city} - ${shippingAddress.pincode}, Ph: ${shippingAddress.phone}`
+                        shipping_address: `${shippingAddress.name}, ${shippingAddress.address}, ${shippingAddress.city} - ${shippingAddress.pincode}, Ph: ${shippingAddress.phone}`,
+                        payment_method: paymentMethod
                     };
 
                     const headers = { 'Content-Type': 'application/json' };
@@ -416,11 +501,25 @@
                                     checkout_id: data.data.id,
                                     user_id: user.id.toString(),
                                     order_total: data.data.total_amount,
-                                    shipping_address: payload.shipping_address
+                                    shipping_address: payload.shipping_address,
+                                    payment_method: payload.payment_method
                                 })
                             });
                         } catch(orderErr) {
                             console.warn('Order sync failed but checkout succeeded:', orderErr);
+                        }
+
+                        // 6. Reduce Inventory Stock in Catalog
+                        try {
+                            for (const item of cart) {
+                                await fetch(`${API_BASE}/catalog/reduce-stock`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ productId: item.id, quantity: item.qty })
+                                });
+                            }
+                        } catch(stockErr) {
+                            console.error('Failed to update inventory:', stockErr.message);
                         }
 
                         // Save shipping address to user's DB profile for next time
@@ -541,10 +640,19 @@
                                         <span className="text-sm font-medium ml-1 hidden md:inline">Login</span>
                                     </button>
                                 )}
-                                <button onClick={() => setIsCartOpen(true)} className="relative hover:text-brand-500 transition cursor-pointer">
-                                    <LIcon name="shopping-bag" className="w-5 h-5" />
+                                <button onClick={() => setView('wishlist')} className="relative group hover:text-brand-500 transition ml-2">
+                                    <LIcon name="heart" className={`w-6 h-6 ${wishlist.length > 0 ? 'fill-brand-500 text-brand-500' : ''}`} />
+                                    {wishlist.length > 0 && (
+                                        <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[8px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                                            {wishlist.length}
+                                        </span>
+                                    )}
+                                </button>
+                                <button onClick={() => setIsCartOpen(true)} className={`flex items-center space-x-2 px-4 py-2 rounded-full transition shadow-md relative group ${isScrolled || view !== 'home' ? 'bg-brand-600 text-white hover:bg-brand-700' : 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm border border-white/30'}`}>
+                                    <LIcon name="shopping-bag" className="w-4 h-4" />
+                                    <span className="text-sm font-bold">Cart</span>
                                     {cartCount > 0 && (
-                                        <span className="absolute -top-2 -right-2 bg-brand-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                                        <span className={`absolute -top-1 -right-1 text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition ${isScrolled || view !== 'home' ? 'bg-white text-brand-600' : 'bg-brand-500 text-white'}`}>
                                             {cartCount}
                                         </span>
                                     )}
@@ -667,6 +775,14 @@
                                                                         View Details
                                                                     </div>
                                                                 </div>
+
+                                                                {/* Floating Wishlist Button */}
+                                                                <button 
+                                                                    onClick={(e) => { e.stopPropagation(); toggleWishlist(product); }} 
+                                                                    className={`absolute top-4 right-4 z-10 p-2.5 rounded-full transition-all duration-300 transform hover:scale-110 shadow-lg ${wishlist.some(p => p.id === product.id) ? 'bg-red-500 text-white' : 'bg-white/80 hover:bg-white text-gray-400 hover:text-red-500'}`}
+                                                                >
+                                                                    <LIcon name="heart" className={`w-4 h-4 ${wishlist.some(p => p.id === product.id) ? 'fill-current' : ''}`} />
+                                                                </button>
                                                             </div>
 
                                                             <div className="text-center cursor-pointer" onClick={() => goToProductDetail(product)}>
@@ -676,6 +792,19 @@
                                                                 <div className="flex justify-center items-end space-x-2">
                                                                     <p className="font-bold text-lg text-brand-900">₹{priceInfo.total.toLocaleString()}</p>
                                                                     <p className="text-xs text-gray-400 mb-1">(Inc. GST)</p>
+                                                                </div>
+                                                                
+                                                                {/* Stock Status Badge */}
+                                                                <div className="mt-3">
+                                                                    {product.stock_quantity > 0 ? (
+                                                                        <span className="text-[10px] bg-green-50 text-green-600 px-2.5 py-1 rounded-full font-bold border border-green-100 flex items-center justify-center w-fit mx-auto">
+                                                                            <LIcon name="check-circle" className="w-3 h-3 mr-1" /> {product.stock_quantity} available
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="text-[10px] bg-red-50 text-red-600 px-2.5 py-1 rounded-full font-bold border border-red-100 flex items-center justify-center w-fit mx-auto">
+                                                                            <LIcon name="x-circle" className="w-3 h-3 mr-1" /> Out of stock
+                                                                        </span>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -722,12 +851,28 @@
                                 </div>
                                 <div className="max-w-7xl mx-auto px-6 mt-8">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-20 items-center">
-                                        {/* Image Gallery Mockup */}
-                                        <div className="bg-gray-50 rounded-2xl aspect-[4/5] flex justify-center items-center p-8 border border-gray-100 relative overflow-hidden group">
-                                            <img src={selectedProduct.image_url} alt={selectedProduct.name} className="w-full h-full object-cover mix-blend-multiply transform transition-transform duration-700 hover:scale-105" />
-                                            <div className="absolute top-4 left-4 bg-white/80 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-brand-900 shadow-sm border border-brand-100">
-                                                {selectedProduct.category}
+                                        {/* Image Gallery */}
+                                        <div className="space-y-4">
+                                            <div className="bg-gray-50 rounded-2xl aspect-[4/5] flex justify-center items-center p-8 border border-gray-100 relative overflow-hidden group shadow-lg">
+                                                <img src={selectedProduct.image_url} alt={selectedProduct.name} className="w-full h-full object-cover mix-blend-multiply transform transition-transform duration-700 hover:scale-105" />
+                                                <div className="absolute top-4 left-4 bg-white/80 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-brand-900 shadow-sm border border-brand-100">
+                                                    {selectedProduct.category}
+                                                </div>
                                             </div>
+                                            
+                                            {selectedProduct.images && selectedProduct.images.length > 0 && (
+                                                <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-elegant">
+                                                    {selectedProduct.images.map((img, idx) => (
+                                                        <div 
+                                                            key={idx} 
+                                                            onClick={() => setSelectedProduct({...selectedProduct, image_url: img})}
+                                                            className={`w-20 h-20 rounded-xl border-2 flex-none cursor-pointer overflow-hidden transition-all hover:border-brand-500 shadow-sm ${selectedProduct.image_url === img ? 'border-brand-500 scale-105 ring-2 ring-brand-100' : 'border-gray-100'}`}
+                                                        >
+                                                            <img src={img} className="w-full h-full object-cover" />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Product Details & Actions */}
@@ -749,22 +894,33 @@
                                                         ₹{getPriceBreakdown(selectedProduct.base_price, selectedProduct.gst_percentage).total.toLocaleString()}
                                                     </p>
                                                 </div>
-                                                <div className="text-sm font-medium text-green-600 bg-green-50 px-3 py-1 rounded border border-green-200 inline-block w-fit h-fit">
-                                                    <LIcon name="check-circle" className="w-4 h-4 inline mr-1" /> In Stock Ready
-                                                </div>
+                                                {selectedProduct.stock_quantity > 0 ? (
+                                                    <div className="text-sm font-medium text-green-600 bg-green-50 px-3 py-1 rounded border border-green-200 inline-block w-fit h-fit">
+                                                        <LIcon name="check-circle" className="w-4 h-4 inline mr-1" /> {selectedProduct.stock_quantity} Units In Stock
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-sm font-medium text-red-600 bg-red-50 px-3 py-1 rounded border border-red-200 inline-block w-fit h-fit">
+                                                        <LIcon name="x-circle" className="w-4 h-4 inline mr-1" /> Out of Stock
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {/* Actions */}
                                             <div className="flex flex-col sm:flex-row gap-4 mb-10">
                                                 <button
                                                     onClick={() => addToCart(selectedProduct, 1)}
-                                                    className="flex-1 bg-brand-900 text-white font-bold text-lg py-4 rounded-xl hover:bg-brand-800 transition shadow-xl hover:shadow-2xl hover:-translate-y-1 transform flex justify-center items-center"
+                                                    disabled={selectedProduct.stock_quantity <= 0}
+                                                    className={`flex-1 font-bold text-lg py-4 rounded-xl transition shadow-xl transform flex justify-center items-center ${selectedProduct.stock_quantity > 0 ? 'bg-brand-900 text-white hover:bg-brand-800 hover:shadow-2xl hover:-translate-y-1' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                                                 >
                                                     <LIcon name="shopping-cart" className="w-5 h-5 mr-3" />
-                                                    Add to Cart
+                                                    {selectedProduct.stock_quantity > 0 ? 'Add to Cart' : 'Out of Stock'}
                                                 </button>
-                                                <button className="flex-none w-16 h-[60px] flex items-center justify-center border-2 border-brand-200 rounded-xl text-brand-500 hover:bg-brand-50 hover:border-brand-500 transition">
-                                                    <LIcon name="heart" className="w-6 h-6" />
+                                                <button 
+                                                    onClick={() => toggleWishlist(selectedProduct)}
+                                                    className={`flex-1 border-2 rounded-xl font-bold py-4 transition shadow-sm flex items-center justify-center group ${wishlist.some(p => p.id === selectedProduct.id) ? 'bg-red-50 border-red-200 text-red-600' : 'border-brand-200 text-brand-600 hover:bg-brand-50 hover:border-brand-500'}`}
+                                                >
+                                                    <LIcon name="heart" className={`w-5 h-5 mr-3 group-hover:scale-110 transition ${wishlist.some(p => p.id === selectedProduct.id) ? 'fill-current' : 'opacity-80'}`} />
+                                                    {wishlist.some(p => p.id === selectedProduct.id) ? 'Saved to Wishlist' : 'Wishlist'}
                                                 </button>
                                             </div>
 
@@ -855,6 +1011,17 @@
                                                 placeholder="••••••••"
                                             />
                                         </div>
+                                        {view === 'login' && (
+                                            <div className="flex justify-end pt-1">
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => { setView('forgot_password'); setAuthError(''); }}
+                                                    className="text-xs font-semibold text-brand-600 hover:text-brand-900 transition underline decoration-1 underline-offset-4"
+                                                >
+                                                    Forgot Password?
+                                                </button>
+                                            </div>
+                                        )}
                                         
                                         <button 
                                             type="submit" 
@@ -873,6 +1040,63 @@
                                             <p>Already have an account? <button onClick={() => { setView('login'); setAuthError(''); setAuthForm({name: '', email: '', password: ''}); }} className="font-bold text-brand-600 hover:text-brand-900 transition underline">Sign in</button></p>
                                         )}
                                     </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* FORGOT PASSWORD VIEW */}
+                        {view === 'forgot_password' && (
+                            <div className="animate-fade-in flex-grow flex items-center justify-center pt-24 pb-12 px-6 hero-pattern min-h-screen">
+                                <div className="bg-white/95 backdrop-blur-xl w-full max-w-md p-8 md:p-10 rounded-3xl shadow-2xl relative z-10">
+                                    <div className="text-center mb-8">
+                                        <div className="w-16 h-16 bg-brand-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-brand-100">
+                                            <LIcon name="key-round" className="w-8 h-8 text-brand-600" />
+                                        </div>
+                                        <h2 className="text-3xl font-serif text-brand-900 mb-2 font-bold">Recover Account</h2>
+                                        <p className="text-gray-500 text-sm">Enter your email and we'll send you a link to reset your password.</p>
+                                    </div>
+
+                                    {!authError && authForm.emailSent ? (
+                                        <div className="text-center space-y-6">
+                                            <div className="bg-green-50 text-green-700 p-4 rounded-xl border border-green-100 text-sm">
+                                                <p className="font-bold mb-1">Check your inbox!</p>
+                                                <p>If an account exists for {authForm.email}, you'll receive reset instructions shortly.</p>
+                                            </div>
+                                            <button onClick={() => setView('login')} className="text-brand-600 font-bold hover:underline">Back to Login</button>
+                                        </div>
+                                    ) : (
+                                        <form onSubmit={(e) => {
+                                            e.preventDefault();
+                                            setAuthLoading(true);
+                                            // Mocking email send for now
+                                            setTimeout(() => {
+                                                setAuthForm(prev => ({ ...prev, emailSent: true }));
+                                                setAuthLoading(false);
+                                            }, 1500);
+                                        }} className="space-y-6">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                                                <input 
+                                                    type="email" 
+                                                    required 
+                                                    value={authForm.email}
+                                                    onChange={(e) => setAuthForm(prev => ({ ...prev, email: e.target.value }))}
+                                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white transition outline-none"
+                                                    placeholder="jane@example.com"
+                                                />
+                                            </div>
+                                            <button 
+                                                type="submit" 
+                                                disabled={authLoading}
+                                                className="w-full bg-brand-900 text-white font-bold py-3.5 rounded-xl hover:bg-brand-800 transition shadow-lg flex justify-center items-center"
+                                            >
+                                                {authLoading ? 'Sending...' : 'Send Reset Link'}
+                                            </button>
+                                            <div className="text-center pt-2">
+                                                <button type="button" onClick={() => setView('login')} className="text-sm font-medium text-gray-500 hover:text-brand-900">Cancel and go back</button>
+                                            </div>
+                                        </form>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -917,6 +1141,38 @@
                                                     <div>
                                                         <label className="block text-sm font-semibold text-gray-700 mb-1">Phone Number</label>
                                                         <input required type="tel" value={shippingAddress.phone} onChange={(e) => setShippingAddress(prev => ({ ...prev, phone: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none" placeholder="+91 98765 43210" />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+                                                <h3 className="text-lg font-bold text-gray-800 mb-5 flex items-center">
+                                                    <LIcon name="credit-card" className="w-5 h-5 mr-2 text-brand-500" /> Payment Method
+                                                </h3>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div 
+                                                        onClick={() => setPaymentMethod('Online Payment')}
+                                                        className={`group cursor-pointer p-5 rounded-xl border-2 transition-all flex flex-col items-center justify-center text-center space-y-3 ${paymentMethod === 'Online Payment' ? 'border-brand-500 bg-brand-50 shadow-md scale-[1.02]' : 'border-gray-100 hover:border-brand-200 hover:bg-gray-50'}`}
+                                                    >
+                                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${paymentMethod === 'Online Payment' ? 'bg-brand-900 text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-brand-100 group-hover:text-brand-600'}`}>
+                                                            <LIcon name="globe" className="w-6 h-6" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-bold text-gray-900">Online Payment</p>
+                                                            <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mt-1">Digital Processing</p>
+                                                        </div>
+                                                    </div>
+                                                    <div 
+                                                        onClick={() => setPaymentMethod('Cash on Delivery')}
+                                                        className={`group cursor-pointer p-5 rounded-xl border-2 transition-all flex flex-col items-center justify-center text-center space-y-3 ${paymentMethod === 'Cash on Delivery' ? 'border-brand-500 bg-brand-50 shadow-md scale-[1.02]' : 'border-gray-100 hover:border-brand-200 hover:bg-gray-50'}`}
+                                                    >
+                                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${paymentMethod === 'Cash on Delivery' ? 'bg-brand-900 text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-brand-100 group-hover:text-brand-600'}`}>
+                                                            <LIcon name="banknote" className="w-6 h-6" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-bold text-gray-900">Cash on Delivery</p>
+                                                            <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mt-1">Pay at doorstep</p>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -993,6 +1249,10 @@
                                             <span className="font-bold text-brand-900 text-xl">₹{parseFloat(checkoutResult.total_amount).toLocaleString()}</span>
                                         </div>
                                         <div className="flex justify-between items-center border-b border-brand-100 pb-4">
+                                            <span className="text-sm font-medium text-gray-600">Payment Via</span>
+                                            <span className="font-semibold text-brand-700">{checkoutResult.payment_method || 'Online Payment'}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center border-b border-brand-100 pb-4">
                                             <span className="text-sm font-medium text-gray-600">Status</span>
                                             <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-semibold">{checkoutResult.status || 'PROCESSING'}</span>
                                         </div>
@@ -1008,6 +1268,77 @@
                                     >
                                         Continue Shopping
                                     </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ======================================= */}
+                        {/* WISHLIST VIEW                            */}
+                        {/* ======================================= */}
+                        {view === 'wishlist' && (
+                            <div className="animate-fade-in flex-grow pt-32 pb-24 bg-white">
+                                <div className="max-w-7xl mx-auto px-6">
+                                    <div className="flex items-center justify-between mb-10 pb-6 border-b border-gray-100">
+                                        <div className="flex items-center space-x-4">
+                                            <button onClick={goToHome} className="p-2 hover:bg-gray-100 rounded-full transition">
+                                                <LIcon name="arrow-left" className="w-5 h-5 text-gray-500" />
+                                            </button>
+                                            <h2 className="text-3xl font-serif font-bold text-brand-900 italic">My Wishlist</h2>
+                                        </div>
+                                        <p className="text-sm font-medium text-gray-500">{wishlist.length} {wishlist.length === 1 ? 'Fragrance' : 'Fragrances'} Saved</p>
+                                    </div>
+
+                                    {wishlist.length > 0 ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                            {wishlist.map(product => {
+                                                const priceInfo = getPriceBreakdown(product.base_price, product.gst_percentage);
+                                                return (
+                                                    <div key={product.id} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-xl transition group relative overflow-hidden flex flex-col h-full">
+                                                        <div 
+                                                            className="aspect-square bg-gray-50 rounded-xl mb-4 overflow-hidden cursor-pointer"
+                                                            onClick={() => goToProductDetail(product)}
+                                                        >
+                                                            <img src={product.image_url} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 mix-blend-multiply" />
+                                                        </div>
+                                                        <div className="flex flex-col flex-grow">
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                <div>
+                                                                    <p className="text-[10px] uppercase font-bold text-brand-500 tracking-widest">{product.brand}</p>
+                                                                    <h4 className="font-serif text-lg font-bold text-gray-900 group-hover:text-brand-600 transition-colors">{product.name}</h4>
+                                                                </div>
+                                                                <button 
+                                                                    onClick={() => toggleWishlist(product)}
+                                                                    className="p-2 bg-red-50 text-red-500 rounded-full hover:bg-red-500 hover:text-white transition group/btn shadow-sm"
+                                                                >
+                                                                    <LIcon name="trash-2" className="w-4 h-4" />
+                                                                </button>
+                                                            </div>
+                                                            <p className="text-xl font-bold text-brand-900 mb-6 mt-auto">₹{priceInfo.total.toLocaleString()}</p>
+                                                            <button 
+                                                                onClick={() => addToCart(product, 1)}
+                                                                disabled={product.stock_quantity <= 0}
+                                                                className={`w-full py-3 rounded-xl font-bold transition flex items-center justify-center space-x-2 ${product.stock_quantity > 0 ? 'bg-brand-900 text-white hover:bg-brand-800 shadow-md' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                                                            >
+                                                                <LIcon name="shopping-bag" className="w-4 h-4" />
+                                                                <span>{product.stock_quantity > 0 ? 'Add to Cart' : 'Out of Stock'}</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-24 bg-brand-50/30 rounded-3xl border-2 border-dashed border-brand-100">
+                                            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
+                                                <LIcon name="heart" className="w-10 h-10 text-brand-200" />
+                                            </div>
+                                            <h4 className="text-xl font-serif font-bold text-brand-900 mb-2">Your wishlist is empty</h4>
+                                            <p className="text-gray-500 mb-8 max-w-sm mx-auto">Save your favorite fragrances to find them easily and purchase them later.</p>
+                                            <button onClick={goToHome} className="bg-brand-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-brand-800 shadow-lg">
+                                                Go To Catalog
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -1111,8 +1442,8 @@
                                                                         <p className="text-xs text-brand-500 font-bold tracking-widest uppercase mb-1">{item.brand}</p>
                                                                         <h4 className="font-serif font-bold text-gray-900 leading-tight">{item.name}</h4>
                                                                     </div>
-                                                                    <button onClick={() => removeFromCart(item.id)} className="text-gray-300 hover:text-red-500 transition -mt-1 p-1" title="Remove">
-                                                                        <LIcon name="trash-2" className="w-4 h-4" />
+                                                                    <button onClick={() => removeFromCart(item.id)} className="text-gray-400 hover:text-red-600 transition -mt-1 p-2 hover:bg-red-50 rounded-full" title="Remove">
+                                                                        <LIcon name="trash-2" className="w-5 h-5" />
                                                                     </button>
                                                                 </div>
                                                                 <p className="text-xs text-gray-500 mt-1 line-clamp-1">{item.description}</p>
@@ -1365,8 +1696,12 @@
                                     {/* Footer Row */}
                                     <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-gray-100">
                                         <div className="flex items-center text-xs text-gray-500">
-                                            <LIcon name="clock" className="w-3 h-3 mr-1" />
                                             <span>{new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                                            <span className="mx-2 font-bold">•</span>
+                                            <div className="flex items-center text-brand-700 bg-brand-50 px-2 py-0.5 rounded-md font-bold">
+                                                <LIcon name={order.payment_method === 'Cash on Delivery' ? 'banknote' : 'globe'} className="w-3 h-3 mr-1" />
+                                                {order.payment_method || 'Online Payment'}
+                                            </div>
                                         </div>
                                         <div className="text-right">
                                             <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">Total</p>

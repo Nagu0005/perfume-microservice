@@ -11,10 +11,17 @@ class OrderRepository {
                 status VARCHAR(50) DEFAULT 'CREATED',
                 tracking_number VARCHAR(100),
                 shipping_address TEXT,
+                payment_method VARCHAR(50) DEFAULT 'Online Payment',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `;
         await db.query(createTableQuery);
+        // Migration: Add payment_method column if it doesn't exist
+        try {
+            await db.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'Online Payment'`);
+        } catch (err) {
+            console.log("Migration check order payment_method:", err.message);
+        }
     }
 
     async findAll() {
@@ -33,11 +40,11 @@ class OrderRepository {
     }
 
     async create(orderData) {
-        const { checkout_id, user_id, order_total, shipping_address } = orderData;
+        const { checkout_id, user_id, order_total, shipping_address, payment_method } = orderData;
         const result = await db.query(
-            `INSERT INTO orders (checkout_id, user_id, order_total, status, shipping_address) 
-             VALUES ($1, $2, $3, 'CREATED', $4) RETURNING *`,
-            [checkout_id, user_id, order_total, shipping_address || null]
+            `INSERT INTO orders (checkout_id, user_id, order_total, status, shipping_address, payment_method) 
+             VALUES ($1, $2, $3, 'CREATED', $4, $5) RETURNING *`,
+            [checkout_id, user_id, order_total, shipping_address || null, payment_method || 'Online Payment']
         );
         return result.rows[0];
     }

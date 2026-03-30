@@ -4,10 +4,12 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-jwt-key-aurora';
 
 const authMiddleware = (req, res, next) => {
     // Check if the route is one of the secure routes
+    const isCatalogWrite = (req.method === 'POST' || req.method === 'PUT' || req.method === 'DELETE') && 
+                            req.originalUrl.startsWith('/api/v1/catalog') && 
+                            !req.originalUrl.includes('/reduce-stock');
+
     const isSecureRoute = 
-        (req.method === 'POST' && req.originalUrl.startsWith('/api/v1/catalog')) ||
-        (req.method === 'PUT' && req.originalUrl.startsWith('/api/v1/catalog')) ||
-        (req.method === 'DELETE' && req.originalUrl.startsWith('/api/v1/catalog')) ||
+        isCatalogWrite ||
         (req.method === 'GET' && req.originalUrl.startsWith('/api/v1/orders')) ||
         (req.method === 'GET' && req.originalUrl.startsWith('/api/v1/users/admin/users')) ||
         (req.method === 'PUT' && req.originalUrl.startsWith('/api/v1/users/admin/users')); 

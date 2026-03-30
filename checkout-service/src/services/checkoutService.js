@@ -29,7 +29,8 @@ class CheckoutService {
             user_id: checkoutData.user_id,
             items: checkoutData.items,
             total_amount: calculatedTotal,
-            shipping_address: checkoutData.shipping_address
+            shipping_address: checkoutData.shipping_address,
+            payment_method: checkoutData.payment_method || 'Online Payment'
         };
 
         const result = await checkoutRepository.create(newCheckout);

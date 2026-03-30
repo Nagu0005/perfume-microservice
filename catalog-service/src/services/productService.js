@@ -56,7 +56,9 @@ class ProductService {
             base_price: productData.base_price,
             gst_percentage: productData.gst_percentage || 18, // Default GST to 18% as per Indian norms for perfumes
             image_url: productData.image_url || '',
+            images: productData.images || [],
             description: productData.description || '',
+            stock_quantity: parseInt(productData.stock_quantity) || 0,
             seller_id: productData.seller_id || null
         });
 
@@ -74,7 +76,9 @@ class ProductService {
             base_price: productData.base_price || existing.base_price,
             gst_percentage: productData.gst_percentage || existing.gst_percentage,
             image_url: productData.image_url || existing.image_url,
-            description: productData.description || existing.description
+            images: productData.images || existing.images || [],
+            description: productData.description || existing.description,
+            stock_quantity: parseInt(productData.stock_quantity) !== undefined ? parseInt(productData.stock_quantity) : existing.stock_quantity
         };
 
         const updated = await productRepository.update(id, updatedData);
@@ -83,6 +87,14 @@ class ProductService {
 
     async deleteProduct(id) {
         return await productRepository.delete(id);
+    }
+
+    async reduceStock(id, quantity) {
+        const updated = await productRepository.decrementStock(id, quantity);
+        if (!updated) {
+            throw new Error(`Insufficient stock for product ID: ${id}`);
+        }
+        return this.calculatePricing(updated);
     }
 }
 

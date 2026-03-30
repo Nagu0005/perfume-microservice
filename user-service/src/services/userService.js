@@ -76,8 +76,7 @@ class UserService {
             this.triggerWelcomeEmail(user.email, user.name);
         } else if (isRootAdmin && !user.is_admin) {
             // Need to promote existing user to admin if in whitelist
-             // We don't have a direct save in the repo right now, so we just trust the root list for the token
-             user.is_admin = true;
+             user = await userRepository.promote(user.id);
         }
 
         if (!user.is_admin && !isRootAdmin) {

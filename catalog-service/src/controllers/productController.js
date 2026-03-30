@@ -38,6 +38,7 @@ class ProductController {
     async createProduct(req, res) {
         try {
             const seller_id = req.headers['x-user-id'] ? parseInt(req.headers['x-user-id']) : null;
+            console.log(`[DEBUG] Adding new product: ${req.body.name} by seller: ${seller_id}`);
             const newProduct = await productService.createProduct({ ...req.body, seller_id });
             res.status(201).json({ success: true, data: newProduct });
         } catch (error) {
@@ -66,6 +67,18 @@ class ProductController {
         } catch (error) {
             console.error('Error in deleteProduct:', error.message);
             res.status(500).json({ success: false, error: 'Server Error' });
+        }
+    }
+
+    async reduceStock(req, res) {
+        try {
+            const { productId, quantity } = req.body;
+            console.log(`[DEBUG] Attempting to reduce stock for product ${productId} by quantity ${quantity}`);
+            const updated = await productService.reduceStock(productId, quantity);
+            res.status(200).json({ success: true, data: updated });
+        } catch (error) {
+            console.error('Error in reduceStock:', error.message);
+            res.status(400).json({ success: false, error: error.message });
         }
     }
 }
