@@ -85,6 +85,8 @@ app.use('/recommendations', createProxyMiddleware({ ...createProxyOptions('recom
 app.use('/currency', createProxyMiddleware({ ...createProxyOptions('currency', services.currency), pathRewrite: (path, req) => req.originalUrl.replace(/^\/currency/, '/api/v1/currency') }));
 app.use('/ads', createProxyMiddleware({ ...createProxyOptions('ad', services.ad), pathRewrite: (path, req) => req.originalUrl.replace(/^\/ads/, '/api/v1/ads') }));
 app.use('/users', createProxyMiddleware({ ...createProxyOptions('users', services.users), pathRewrite: (path, req) => req.originalUrl.replace(/^\/users/, '/api/v1/users') }));
+// Explicit mapping for Google OAuth callback without the "/api/v1/users" prefix
+app.use('/auth/google/callback', createProxyMiddleware({ ...createProxyOptions('users', services.users), pathRewrite: () => '/api/v1/users/auth/google/callback' }));
 
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'UP', message: 'API Gateway is functioning normally' });
