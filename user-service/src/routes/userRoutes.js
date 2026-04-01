@@ -14,6 +14,7 @@ router.get('/public/:id', userController.getPublicProfile);
 
 // Admin Routes (These should ideally be protected by the Gateway)
 router.post('/admin/google', userController.adminGoogleLogin);
+router.post('/auth/google/callback', userController.adminGoogleLoginCallback);
 router.get('/admin/users', userController.getAllUsers);
 router.put('/admin/users/:id/promote', userController.promoteUser);
 

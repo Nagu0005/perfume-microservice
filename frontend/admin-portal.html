@@ -178,18 +178,43 @@
         // --- Login Screen ---
         function LoginScreen({ setToken, setAdminUser }) {
             const [error, setError] = useState('');
-            const GOOGLE_CLIENT_ID = "506820001325-q4r1tlgiut1uirgsrgvvmaosj47qkj3i.apps.googleusercontent.com"; 
+            const GOOGLE_CLIENT_ID = "213029188924-7vufs1ig0isosmmjqq9vv7h2d3kvd3q6.apps.googleusercontent.com";
 
             useEffect(() => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const tokenFromUrl = urlParams.get('token');
+                const userFromUrl = urlParams.get('user');
+                const errFromUrl = urlParams.get('error');
+
+                if (tokenFromUrl && userFromUrl) {
+                    try {
+                        const parsedUser = JSON.parse(decodeURIComponent(userFromUrl));
+                        localStorage.setItem('admin_token', tokenFromUrl);
+                        localStorage.setItem('admin_user', JSON.stringify(parsedUser));
+                        setToken(tokenFromUrl);
+                        setAdminUser(parsedUser);
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        return;
+                    } catch(e) {
+                         setError('Failed to parse user data from login.');
+                    }
+                } else if (errFromUrl) {
+                    setError(decodeURIComponent(errFromUrl));
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+
                 const initGoogle = () => {
+                    const redirectUri = isLocal ? 'http://localhost:8090/api/v1/users/auth/google/callback' : window.location.protocol + '//' + window.location.hostname + '/api/v1/users/auth/google/callback';
                     if (window.google) {
                         window.google.accounts.id.initialize({
                             client_id: GOOGLE_CLIENT_ID,
+                            login_uri: redirectUri,
+                            ux_mode: "redirect",
                             callback: handleCredentialResponse
                         });
                         window.google.accounts.id.renderButton(
                             document.getElementById("google-signin-btn"),
-                            { theme: "outline", size: "large", width: 300 } 
+                            { theme: "outline", size: "large", width: 300 }
                         );
                     }
                 };
@@ -214,7 +239,7 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ credential: response.credential })
                     });
-                    
+
                     const data = await res.json();
                     if (data.success) {
                         localStorage.setItem('admin_token', data.token);
@@ -235,9 +260,9 @@
                         <img src="./logo.jpg" alt="Ookielz" className="h-20 w-auto mb-6 rounded shadow-md" />
                         <h2 className="text-3xl font-bold text-gray-800 mb-2">Admin Portal</h2>
                         <p className="text-gray-500 mb-8">Secure Access Required</p>
-                        
+
                         <div id="google-signin-btn" className="mb-4"></div>
-                        
+
                         {error && <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm w-full font-medium shadow-inner">{error}</div>}
                     </div>
                 </div>
@@ -460,11 +485,11 @@
                     files.forEach(file => {
                         const reader = new FileReader();
                         reader.onloadend = () => {
-                            setFormData(prev => ({ 
-                                ...prev, 
+                            setFormData(prev => ({
+                                ...prev,
                                 // Set first image as primary if not set
                                 image: prev.image || reader.result,
-                                images: [...prev.images, reader.result] 
+                                images: [...prev.images, reader.result]
                             }));
                         };
                         reader.readAsDataURL(file);
@@ -504,7 +529,7 @@
 
                     const res = await fetch(url, {
                         method,
-                        headers: { 
+                        headers: {
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${token}`
                         },
@@ -544,7 +569,7 @@
             const handleDelete = async (id) => {
                 if (confirm('Are you sure you want to delete this product?')) {
                     try {
-                        const res = await fetch(`${API_BASE}/catalog/${id}`, { 
+                        const res = await fetch(`${API_BASE}/catalog/${id}`, {
                             method: 'DELETE',
                             headers: { 'Authorization': `Bearer ${token}` }
                         });
@@ -637,7 +662,7 @@
                                             {formData.images.map((img, idx) => (
                                                 <div key={idx} className="relative aspect-square rounded-lg border border-gray-200 overflow-hidden group">
                                                     <img src={img} className="w-full h-full object-cover" />
-                                                    <button 
+                                                    <button
                                                         type="button"
                                                         onClick={() => removeImage(idx)}
                                                         className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition shadow-md"
@@ -913,7 +938,7 @@
                     const res = await fetch(`${PROTO_HOST}/orders`, { headers: { 'Authorization': `Bearer ${token}` } });
                     const data = await res.json();
                     if (data.success) setOrders(data.data || []);
-                } catch(e) { console.error('Failed to fetch orders:', e); }
+                } catch (e) { console.error('Failed to fetch orders:', e); }
                 finally { setLoading(false); }
             };
 
@@ -932,7 +957,7 @@
                     const data = await res.json();
                     if (data.success) fetchOrders();
                     else alert('Error: ' + (data.error || 'Failed'));
-                } catch(e) { alert('Failed to update status'); }
+                } catch (e) { alert('Failed to update status'); }
                 finally { setUpdating(null); }
             };
 
@@ -1014,7 +1039,7 @@
                                                 const isCurrent = idx === currentIdx;
                                                 return (
                                                     <React.Fragment key={step.key}>
-                                                        <div className="flex flex-col items-center z-10" style={{minWidth:'70px'}}>
+                                                        <div className="flex flex-col items-center z-10" style={{ minWidth: '70px' }}>
                                                             <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1.5 border-2 transition-all ${isDone ? 'bg-green-500 border-green-500 text-white shadow-sm' : 'bg-gray-100 border-gray-200 text-gray-400'} ${isCurrent ? 'ring-4 ring-green-100 scale-110' : ''}`}>
                                                                 <i data-lucide={step.icon} className="w-4 h-4"></i>
                                                             </div>
@@ -1059,7 +1084,7 @@
                                                 {order.items.map((item, idx) => (
                                                     <div key={idx} className="flex justify-between items-center text-xs">
                                                         <span className="text-gray-600">
-                                                            <span className="font-bold text-gray-800">{item.product_name || `Product #${item.product_id}`}</span> 
+                                                            <span className="font-bold text-gray-800">{item.product_name || `Product #${item.product_id}`}</span>
                                                             <span className="ml-2 px-1.5 py-0.5 bg-gray-100 rounded text-gray-500 font-bold">x{item.quantity}</span>
                                                         </span>
                                                         <span className="font-bold text-brand-900">₹{parseFloat(item.price_at_time).toLocaleString()}</span>

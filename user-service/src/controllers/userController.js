@@ -62,6 +62,21 @@ class UserController {
         }
     }
 
+    async adminGoogleLoginCallback(req, res) {
+        try {
+            const { credential } = req.body;
+            if (!credential) {
+                return res.redirect('/admin-portal.html?error=' + encodeURIComponent('Missing Google credential'));
+            }
+
+            const result = await userService.loginWithGoogle(credential);
+            const userEncoded = encodeURIComponent(JSON.stringify(result.user));
+            res.redirect(`/admin-portal.html?token=${result.token}&user=${userEncoded}`);
+        } catch (error) {
+            res.redirect(`/admin-portal.html?error=${encodeURIComponent(error.message)}`);
+        }
+    }
+
     async getProfile(req, res) {
         try {
             const authHeader = req.headers.authorization;
