@@ -52,7 +52,8 @@ class ProductService {
         const newProduct = await productRepository.create({
             name: productData.name,
             brand: productData.brand || 'Unknown',
-            category: productData.category || 'Unisex',
+            category: productData.category || 'Perfume',
+            sub_category: productData.sub_category || 'Men',
             base_price: productData.base_price,
             gst_percentage: productData.gst_percentage || 18, // Default GST to 18% as per Indian norms for perfumes
             image_url: productData.image_url || '',
@@ -73,6 +74,7 @@ class ProductService {
             name: productData.name || existing.name,
             brand: productData.brand || existing.brand,
             category: productData.category || existing.category,
+            sub_category: productData.sub_category || existing.sub_category,
             base_price: productData.base_price || existing.base_price,
             gst_percentage: productData.gst_percentage || existing.gst_percentage,
             image_url: productData.image_url || existing.image_url,

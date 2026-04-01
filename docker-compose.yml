@@ -8,8 +8,7 @@ services:
     environment:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASS}
-    ports:
-      - "5432:5432"
+
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
@@ -24,7 +23,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 1GB
           cpus: '0.5'
 
   # API Gateway
@@ -67,7 +66,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
           cpus: '0.25'
 
   # Authentication Service
@@ -96,7 +95,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
           cpus: '0.25'
 
   # Core Domain Services
@@ -121,7 +120,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
           cpus: '0.25'
 
   cart-service:
@@ -145,7 +144,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
           cpus: '0.25'
 
   checkout-service:
@@ -169,7 +168,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
           cpus: '0.25'
 
   order-service:
@@ -193,7 +192,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
           cpus: '0.25'
 
   payment-service:
@@ -217,7 +216,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
           cpus: '0.25'
 
   shipping-service:
@@ -241,7 +240,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
           cpus: '0.25'
 
   email-service:
@@ -270,7 +269,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
           cpus: '0.25'
 
   recommendation-service:
@@ -294,7 +293,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
           cpus: '0.25'
 
   ad-service:
@@ -318,7 +317,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
           cpus: '0.25'
 
   currency-service:
@@ -342,7 +341,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
           cpus: '0.25'
 
   # Frontend Service
@@ -359,7 +358,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: 512M
           cpus: '0.25'
 
 volumes:

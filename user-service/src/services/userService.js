@@ -33,8 +33,8 @@ class UserService {
 
     async loginUser(email, password) {
         const user = await userRepository.findByEmail(email);
-        if (!user) {
-            throw new Error('Invalid email or password'); // We should ideally use bcrypt timing safe checks, but this is fine for now
+        if (!user || !user.password_hash) {
+            throw new Error('Invalid email or password');
         }
 
         const isMatch = await bcrypt.compare(password, user.password_hash);

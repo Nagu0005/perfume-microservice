@@ -30,6 +30,7 @@ class ProductRepository {
             console.log('ProductRepository: Verifying schema migrations (images column)...');
             await db.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS images TEXT[] DEFAULT '{}'`);
             await db.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS stock_quantity INTEGER DEFAULT 0`);
+            await db.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS sub_category VARCHAR(100)`);
             console.log('ProductRepository: Schema migrations completed successfully.');
         } catch (err) {
             console.error('ProductRepository: Error during database initialization:', err.message);
@@ -53,22 +54,22 @@ class ProductRepository {
     }
 
     async create(product) {
-        const { name, brand, category, base_price, gst_percentage, image_url, images, description, seller_id } = product;
+        const { name, brand, category, sub_category, base_price, gst_percentage, image_url, images, description, seller_id } = product;
         const result = await db.query(
-            `INSERT INTO products (name, brand, category, base_price, gst_percentage, image_url, images, description, stock_quantity, seller_id) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-            [name, brand, category, base_price, gst_percentage, image_url, images || [], description, product.stock_quantity || 0, seller_id]
+            `INSERT INTO products (name, brand, category, sub_category, base_price, gst_percentage, image_url, images, description, stock_quantity, seller_id) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+            [name, brand, category, sub_category || 'Men', base_price, gst_percentage, image_url, images || [], description, product.stock_quantity || 0, seller_id]
         );
         return result.rows[0];
     }
 
     async update(id, product) {
-        const { name, brand, category, base_price, gst_percentage, image_url, images, description, stock_quantity } = product;
+        const { name, brand, category, sub_category, base_price, gst_percentage, image_url, images, description, stock_quantity } = product;
         const result = await db.query(
             `UPDATE products 
-             SET name = $1, brand = $2, category = $3, base_price = $4, gst_percentage = $5, image_url = $6, images = $7, description = $8, stock_quantity = $9
-             WHERE id = $10 RETURNING *`,
-            [name, brand, category, base_price, gst_percentage, image_url, images || [], description, stock_quantity || 0, id]
+             SET name = $1, brand = $2, category = $3, sub_category = $4, base_price = $5, gst_percentage = $6, image_url = $7, images = $8, description = $9, stock_quantity = $10
+             WHERE id = $11 RETURNING *`,
+            [name, brand, category, sub_category || 'Men', base_price, gst_percentage, image_url, images || [], description, stock_quantity || 0, id]
         );
         return result.rows[0];
     }

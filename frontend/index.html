@@ -146,74 +146,61 @@
             'shield-check': '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>'
         };
 
-        // React-safe Lucide Icon component - renders icons without conflicting with React's DOM
-        function LIcon({ name, className = "" }) {
-            const ref = useRef(null);
-            useEffect(() => {
-                if (!ref.current) return;
-                ref.current.innerHTML = '';
-                try {
-                    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                    svg.setAttribute('viewBox', '0 0 24 24');
-                    svg.setAttribute('fill', 'none');
-                    svg.setAttribute('stroke', 'currentColor');
-                    svg.setAttribute('stroke-width', '2');
-                    svg.setAttribute('stroke-linecap', 'round');
-                    svg.setAttribute('stroke-linejoin', 'round');
-                    
-                    // Priority 1: Internal SVG paths for mission-critical icons
-                    if (SVG_ICONS[name]) {
-                        svg.innerHTML = SVG_ICONS[name];
-                    } 
-                    // Priority 2: Lucide library lookup
-                    else if (typeof lucide !== 'undefined') {
-                        let data = lucide.icons ? lucide.icons[name] : lucide[name];
-                        if (!data && name.includes('-')) {
-                            const camel = name.replace(/-([a-z])/g, g => g[1].toUpperCase());
-                            data = lucide.icons ? lucide.icons[camel] : lucide[camel];
-                        }
-                        if (!data) {
-                            const title = name.charAt(0).toUpperCase() + name.slice(1).replace(/-([a-z])/g, g => g[1].toUpperCase());
-                            data = lucide[title];
-                        }
-                        
-                        if (data && Array.isArray(data)) {
-                            const [,, children] = data;
-                            children.forEach(child => {
-                                const [tag, attrs] = child;
-                                const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
-                                Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
-                                svg.appendChild(el);
-                            });
-                        }
-                    }
+        // Custom Heart Component for better control and reliability
+        const Heart = ({ filled = false, className = "w-5 h-5", color = "currentColor", ...props }) => (
+            <svg
+                viewBox="0 0 24 24"
+                fill={filled ? color : "none"}
+                stroke={color}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={className}
+                {...props}
+            >
+                <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.505 4.045 3 5.5l7 7Z" />
+            </svg>
+        );
 
-                    // Handle Fill logic
-                    if (className.includes('fill-')) {
-                        Array.from(svg.children).forEach(child => {
-                            if (child.tagName === 'path' || child.tagName === 'circle' || child.tagName === 'rect' || child.tagName === 'polygon') {
-                                child.setAttribute('fill', 'currentColor');
-                            }
-                        });
-                    }
+        // React-safe Lucide Icon component
+        const LIcon = ({ name, className = "w-5 h-5", ...props }) => {
+            if (SVG_ICONS[name]) {
+                return (
+                    <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className={`inline-flex items-center justify-center ${className}`}
+                        dangerouslySetInnerHTML={{ __html: SVG_ICONS[name] }}
+                        {...props}
+                    />
+                );
+            }
 
-                    // Set size from className
-                    const sizeMatch = className.match(/w-(\d+)/);
-                    if (sizeMatch) {
-                        const rem = parseInt(sizeMatch[1]) * 0.25;
-                        svg.setAttribute('width', `${rem}rem`);
-                        svg.setAttribute('height', `${rem}rem`);
-                    }
-                    
-                    ref.current.appendChild(svg);
-                } catch (e) { 
-                    console.warn('Icon error:', name, e); 
-                    // Fallback to text for extreme cases
-                    ref.current.innerText = '';
+            const ref = React.useRef(null);
+            React.useEffect(() => {
+                if (ref.current && window.lucide) {
+                    ref.current.innerHTML = '';
+                    const icon = document.createElement('i');
+                    icon.setAttribute('data-lucide', name);
+                    icon.className = className;
+                    ref.current.appendChild(icon);
+                    window.lucide.createIcons({
+                        attrs: { class: className },
+                        nameAttr: 'data-lucide',
+                        icons: { [name]: true }
+                    });
                 }
             }, [name, className]);
-            return <span ref={ref} className={`inline-flex items-center justify-center ${className}`} />;
-        }
+
+            return <span ref={ref} className={`inline-flex items-center justify-center ${className}`} {...props}></span>;
+        };
+
+        // Safety for BroadcastChannel
+        const updateChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('perfume_updates') : { postMessage: () => {}, onmessage: null };
 
         function UserFrontend() {
             // -- State --
@@ -265,6 +252,26 @@
                 localStorage.setItem('aurora_wishlist', JSON.stringify(wishlist));
             }, [wishlist]);
 
+            // Sync Wishlist with Latest Product Data (Stock/Price)
+            useEffect(() => {
+                if (products.length > 0 && wishlist.length > 0) {
+                    const updatedWishlist = wishlist.map(wishItem => {
+                        const latestProduct = products.find(p => p.id === wishItem.id);
+                        return latestProduct ? { ...wishItem, ...latestProduct } : wishItem;
+                    });
+                    
+                    // Only update if there's an actual change in stock or price to avoid unnecessary re-renders
+                    const isDifferent = updatedWishlist.some((item, idx) => 
+                        item.stock_quantity !== wishlist[idx].stock_quantity || 
+                        item.base_price !== wishlist[idx].base_price
+                    );
+
+                    if (isDifferent) {
+                        setWishlist(updatedWishlist);
+                    }
+                }
+            }, [products]);
+
             // Pre-fill shipping address from user's DB profile
             useEffect(() => {
                 if (user && user.token) {
@@ -288,33 +295,45 @@
             }, [user]);
 
             // -- Data Fetching --
-            useEffect(() => {
-                const fetchData = async () => {
-                    try {
-                        setLoading(true);
-                        // Fetch products from catalog service
-                        const prodRes = await fetch(`${API_BASE}/catalog`);
-                        const prodData = await prodRes.json();
-                        if (prodData.success) setProducts(prodData.data);
+            const loadInitialData = async () => {
+                try {
+                    setLoading(true);
+                    // Fetch products from catalog service
+                    const prodRes = await fetch(`${API_BASE}/catalog`);
+                    const prodData = await prodRes.json();
+                    if (prodData.success) setProducts(prodData.data);
 
-                        // Fetch exchange rates from currency service
-                        const rateRes = await fetch(`${API_BASE}/currency/rates`);
-                        const rateData = await rateRes.json();
-                        if (rateData.success) {
-                            const rateMap = {};
-                            rateData.data.forEach(r => {
-                                rateMap[r.code] = parseFloat(r.rate_to_inr);
-                            });
-                            setRates(rateMap);
-                        }
-                    } catch (err) {
-                        console.error('Fetch error:', err);
-                        setError('Failed to connect to microservices. Ensure API Gateway is running.');
-                    } finally {
-                        setLoading(false);
+                    // Fetch exchange rates from currency service
+                    const rateRes = await fetch(`${API_BASE}/currency/rates`);
+                    const rateData = await rateRes.json();
+                    if (rateData.success) {
+                        const rateMap = {};
+                        rateData.data.forEach(r => {
+                            rateMap[r.code] = parseFloat(r.rate_to_inr);
+                        });
+                        setRates(rateMap);
+                    }
+                } catch (err) {
+                    console.error('Fetch error:', err);
+                    setError('Failed to connect to microservices. Ensure API Gateway is running.');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            useEffect(() => {
+                loadInitialData();
+
+                updateChannel.onmessage = (event) => {
+                    if (event.data === 'REFRESH_CATALOG') {
+                        console.log('Received refresh signal from other tab');
+                        loadInitialData();
                     }
                 };
-                fetchData();
+
+                return () => {
+                    updateChannel.onmessage = null;
+                };
             }, []);
 
             useEffect(() => {
@@ -347,10 +366,18 @@
 
             // -- Cart Handlers --
             const addToCart = (product, quantity = 1) => {
+                // Always get the MOST LATEST stock from the master products list
+                const masterProduct = products.find(p => p.id === product.id) || product;
+                const maxAvailable = masterProduct.stock_quantity || 0;
+
+                if (maxAvailable <= 0) {
+                    alert(`Sorry, ${product.name} is currently out of stock.`);
+                    return;
+                }
+
                 setCart(prev => {
                     const existing = prev.find(item => item.id === product.id);
                     const currentQty = existing ? existing.qty : 0;
-                    const maxAvailable = product.stock_quantity || 0;
 
                     if (currentQty + quantity > maxAvailable) {
                         alert(`Sorry, only ${maxAvailable} units of ${product.name} are in stock.`);
@@ -358,9 +385,9 @@
                     }
 
                     if (existing) {
-                        return prev.map(item => item.id === product.id ? { ...item, qty: item.qty + quantity } : item);
+                        return prev.map(item => item.id === product.id ? { ...item, qty: item.qty + quantity, stock_quantity: maxAvailable } : item);
                     }
-                    return [...prev, { ...product, qty: quantity }];
+                    return [...prev, { ...masterProduct, qty: quantity }];
                 });
                 setIsCartOpen(true);
             };
@@ -502,7 +529,8 @@
                                     user_id: user.id.toString(),
                                     order_total: data.data.total_amount,
                                     shipping_address: payload.shipping_address,
-                                    payment_method: payload.payment_method
+                                    payment_method: payload.payment_method,
+                                    items: payload.items
                                 })
                             });
                         } catch(orderErr) {
@@ -581,7 +609,9 @@
                                     <img src="./logo.jpg" alt="Ookielz" className="h-10 w-auto object-contain" />
                                 </button>
                                 <div className={`hidden md:flex space-x-6 text-sm font-medium transition-colors ${isScrolled || view !== 'home' ? 'text-gray-600' : 'text-gray-200'}`}>
-                                    <button onClick={() => { goToHome(); setActiveCategory('All'); setTimeout(() => document.getElementById('catalog').scrollIntoView(), 100) }} className="hover:text-brand-500 transition">Perfumes</button>
+                                    <button onClick={() => { goToHome(); setActiveCategory('All'); setTimeout(() => document.getElementById('catalog').scrollIntoView(), 100) }} className="hover:text-brand-500 transition">All</button>
+                                    <button onClick={() => { goToHome(); setActiveCategory('Perfume'); setTimeout(() => document.getElementById('catalog').scrollIntoView(), 100) }} className="hover:text-brand-500 transition">Perfume</button>
+                                    <button onClick={() => { goToHome(); setActiveCategory('Jwellery'); setTimeout(() => document.getElementById('catalog').scrollIntoView(), 100) }} className="hover:text-brand-500 transition">Jwellery</button>
                                     <button onClick={() => { goToHome(); setActiveCategory('Men'); setTimeout(() => document.getElementById('catalog').scrollIntoView(), 100) }} className="hover:text-brand-500 transition">Men</button>
                                     <button onClick={() => { goToHome(); setActiveCategory('Women'); setTimeout(() => document.getElementById('catalog').scrollIntoView(), 100) }} className="hover:text-brand-500 transition">Women</button>
                                     <button onClick={() => { goToHome(); setActiveCategory('Kids'); setTimeout(() => document.getElementById('catalog').scrollIntoView(), 100) }} className="hover:text-brand-500 transition">Kids</button>
@@ -640,19 +670,27 @@
                                         <span className="text-sm font-medium ml-1 hidden md:inline">Login</span>
                                     </button>
                                 )}
-                                <button onClick={() => setView('wishlist')} className="relative group hover:text-brand-500 transition ml-2">
-                                    <LIcon name="heart" className={`w-6 h-6 ${wishlist.length > 0 ? 'fill-brand-500 text-brand-500' : ''}`} />
+                                <button onClick={() => setView('wishlist')} className="relative group transition flex items-center px-3 py-2 rounded-full hover:bg-brand-50/10">
+                                    <span className="flex items-center space-x-1.5">
+                                        <Heart 
+                                            filled={wishlist.length > 0} 
+                                            className={`w-6 h-6 transition-all duration-300 transform group-hover:scale-110 ${wishlist.length > 0 ? 'text-red-500' : 'text-current opacity-80'}`} 
+                                        />
+                                        <span className="text-xs font-bold hidden sm:inline">Wishlist</span>
+                                    </span>
                                     {wishlist.length > 0 && (
-                                        <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[8px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                                        <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[8px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center shadow-md border-2 border-white">
                                             {wishlist.length}
                                         </span>
                                     )}
                                 </button>
-                                <button onClick={() => setIsCartOpen(true)} className={`flex items-center space-x-2 px-4 py-2 rounded-full transition shadow-md relative group ${isScrolled || view !== 'home' ? 'bg-brand-600 text-white hover:bg-brand-700' : 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm border border-white/30'}`}>
-                                    <LIcon name="shopping-bag" className="w-4 h-4" />
-                                    <span className="text-sm font-bold">Cart</span>
+                                <button onClick={() => setIsCartOpen(true)} className="relative group transition flex items-center px-3 py-2 rounded-full hover:bg-brand-50/10 scale-100 hover:scale-105 active:scale-95 transition-all">
+                                    <span className="flex items-center space-x-1.5">
+                                        <LIcon name="shopping-bag" className="w-5 h-5 group-hover:text-brand-600 transition-colors" />
+                                        <span className="text-xs font-bold hidden sm:inline">Cart</span>
+                                    </span>
                                     {cartCount > 0 && (
-                                        <span className={`absolute -top-1 -right-1 text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition ${isScrolled || view !== 'home' ? 'bg-white text-brand-600' : 'bg-brand-500 text-white'}`}>
+                                        <span className="absolute -top-0.5 -right-0.5 bg-brand-600 text-white text-[8px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center shadow-md border-2 border-white group-hover:scale-110 transition">
                                             {cartCount}
                                         </span>
                                     )}
@@ -721,7 +759,7 @@
                                         <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
                                             {/* Category Buttons */}
                                             <div className="flex flex-wrap gap-2 justify-center">
-                                                {['All', 'Men', 'Women', 'Unisex', 'Kids'].map(cat => (
+                                                {['All', 'Perfume', 'Jwellery', 'Men', 'Women', 'Unisex', 'Kids'].map(cat => (
                                                     <button
                                                         key={cat}
                                                         onClick={() => setActiveCategory(cat)}
@@ -781,7 +819,11 @@
                                                                     onClick={(e) => { e.stopPropagation(); toggleWishlist(product); }} 
                                                                     className={`absolute top-4 right-4 z-10 p-2.5 rounded-full transition-all duration-300 transform hover:scale-110 shadow-lg ${wishlist.some(p => p.id === product.id) ? 'bg-red-500 text-white' : 'bg-white/80 hover:bg-white text-gray-400 hover:text-red-500'}`}
                                                                 >
-                                                                    <LIcon name="heart" className={`w-4 h-4 ${wishlist.some(p => p.id === product.id) ? 'fill-current' : ''}`} />
+                                                                    <Heart 
+                                                                        filled={wishlist.some(p => p.id === product.id)} 
+                                                                        className="w-4 h-4" 
+                                                                        color={wishlist.some(p => p.id === product.id) ? 'white' : 'currentColor'}
+                                                                    />
                                                                 </button>
                                                             </div>
 
@@ -919,7 +961,11 @@
                                                     onClick={() => toggleWishlist(selectedProduct)}
                                                     className={`flex-1 border-2 rounded-xl font-bold py-4 transition shadow-sm flex items-center justify-center group ${wishlist.some(p => p.id === selectedProduct.id) ? 'bg-red-50 border-red-200 text-red-600' : 'border-brand-200 text-brand-600 hover:bg-brand-50 hover:border-brand-500'}`}
                                                 >
-                                                    <LIcon name="heart" className={`w-5 h-5 mr-3 group-hover:scale-110 transition ${wishlist.some(p => p.id === selectedProduct.id) ? 'fill-current' : 'opacity-80'}`} />
+                                                    <Heart 
+                                                        filled={wishlist.some(p => p.id === selectedProduct.id)} 
+                                                        className={`w-5 h-5 mr-3 group-hover:scale-110 transition`} 
+                                                        color={wishlist.some(p => p.id === selectedProduct.id) ? '#dc2626' : 'currentColor'}
+                                                    />
                                                     {wishlist.some(p => p.id === selectedProduct.id) ? 'Saved to Wishlist' : 'Wishlist'}
                                                 </button>
                                             </div>
@@ -1330,7 +1376,7 @@
                                     ) : (
                                         <div className="text-center py-24 bg-brand-50/30 rounded-3xl border-2 border-dashed border-brand-100">
                                             <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
-                                                <LIcon name="heart" className="w-10 h-10 text-brand-200" />
+                                                <Heart className="w-10 h-10 text-brand-200" />
                                             </div>
                                             <h4 className="text-xl font-serif font-bold text-brand-900 mb-2">Your wishlist is empty</h4>
                                             <p className="text-gray-500 mb-8 max-w-sm mx-auto">Save your favorite fragrances to find them easily and purchase them later.</p>
@@ -1412,7 +1458,11 @@
                                         <h2 className="text-xl font-serif font-semibold text-brand-900 flex items-center">
                                             <LIcon name="shopping-bag" className="w-5 h-5 mr-2 text-brand-600" /> Your Cart ({cartCount})
                                         </h2>
-                                        <button onClick={() => setIsCartOpen(false)} className="text-gray-400 hover:text-gray-800 transition p-2 bg-white rounded-full shadow-sm">
+                                        <button 
+                                            onClick={() => setIsCartOpen(false)} 
+                                            className="text-gray-500 hover:text-white transition p-2 bg-white hover:bg-red-500 rounded-full shadow-sm hover:shadow-md transition-all duration-300"
+                                            title="Close Cart"
+                                        >
                                             <LIcon name="x" className="w-5 h-5" />
                                         </button>
                                     </div>
@@ -1680,17 +1730,24 @@
                                 {/* Order Body */}
                                 <div className="px-6 py-4">
                                     {/* Items */}
-                                    {order.items && order.items.length > 0 ? (
-                                        <div className="space-y-2 mb-4">
+                                    {order.items && Array.isArray(order.items) && order.items.length > 0 ? (
+                                        <div className="space-y-3 mb-6 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
                                             {order.items.map((item, idx) => (
                                                 <div key={idx} className="flex justify-between items-center text-sm">
-                                                    <span className="text-gray-700">{item.product_name || `Product #${item.product_id}`} <span className="text-gray-400">x{item.quantity}</span></span>
-                                                    <span className="font-semibold text-gray-800">{String.fromCharCode(8377)}{parseFloat(item.price_at_time || 0).toLocaleString()}</span>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-gray-800 font-bold">{item.product_name || item.name || `Product #${item.product_id}`}</span>
+                                                        <span className="text-[10px] text-gray-500 uppercase tracking-tighter">Qty: {item.quantity} units</span>
+                                                    </div>
+                                                    <span className="font-bold text-brand-900 bg-white px-3 py-1 rounded-lg border border-brand-100 shadow-sm">
+                                                        {String.fromCharCode(8377)}{parseFloat(item.price_at_time || item.price || 0).toLocaleString()}
+                                                    </span>
                                                 </div>
                                             ))}
                                         </div>
                                     ) : (
-                                        <p className="text-sm text-gray-400 mb-4">Item details unavailable</p>
+                                        <div className="text-center py-6 bg-red-50/30 rounded-xl border border-dashed border-red-200 mb-4">
+                                            <p className="text-xs text-red-500 font-medium">Item details currently unavailable</p>
+                                        </div>
                                     )}
 
                                     {/* Footer Row */}

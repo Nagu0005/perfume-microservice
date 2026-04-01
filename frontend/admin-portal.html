@@ -58,6 +58,18 @@
         const PROTO_HOST = isLocal ? 'http://localhost:8090' : window.location.protocol + '//' + window.location.hostname + ':8090';
         const API_BASE = `${PROTO_HOST}/api/v1`;
 
+        const updateChannel = new BroadcastChannel('perfume_updates');
+
+        const LIcon = ({ name, className = "w-5 h-5", ...props }) => {
+            useEffect(() => {
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }, [name]);
+
+            return <i data-lucide={name} className={className} {...props}></i>;
+        };
+
 
         // --- Main App Component ---
         function AdminPortal() {
@@ -66,9 +78,10 @@
             const [adminUser, setAdminUser] = useState(JSON.parse(localStorage.getItem('admin_user')) || null);
 
             useEffect(() => {
-                if (!token) return;
-                // Auto Google Signin init if token expires? Not strictly needed for basic flow.
-            }, [token]);
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }, [activeTab, adminUser]); // Re-run when navigation or auth status changes
 
             const handleLogout = () => {
                 localStorage.removeItem('admin_token');
@@ -115,20 +128,6 @@
                                 <span className="font-medium">Orders</span>
                             </button>
                             <button
-                                onClick={() => setActiveTab('sellers')}
-                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'sellers' ? 'bg-brand-600 text-white shadow-md' : 'text-brand-100 hover:bg-brand-600/50'}`}
-                            >
-                                <i data-lucide="users" className="w-5 h-5"></i>
-                                <span className="font-medium">Sellers / Admins</span>
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('store')}
-                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'store' ? 'bg-brand-600 text-white shadow-md' : 'text-brand-100 hover:bg-brand-600/50'}`}
-                            >
-                                <i data-lucide="store" className="w-5 h-5"></i>
-                                <span className="font-medium">Store Profile</span>
-                            </button>
-                            <button
                                 onClick={() => setActiveTab('analytics')}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'analytics' ? 'bg-brand-600 text-white shadow-md' : 'text-brand-100 hover:bg-brand-600/50'}`}
                             >
@@ -169,8 +168,6 @@
                             {activeTab === 'dashboard' && <Dashboard token={token} />}
                             {activeTab === 'products' && <ProductManagement token={token} />}
                             {activeTab === 'orders' && <OrderManagement token={token} />}
-                            {activeTab === 'sellers' && <ManageSellers token={token} />}
-                            {activeTab === 'store' && <StoreProfile token={token} />}
                             {activeTab === 'analytics' && <Analytics token={token} />}
                         </div>
                     </main>
@@ -432,7 +429,7 @@
             const [editingId, setEditingId] = useState(null);
 
             const [formData, setFormData] = useState({
-                name: '', category: 'Men', brand: '', price: '', gst: 18, stock_quantity: '', image: '', images: [], description: ''
+                name: '', category: 'Perfume', sub_category: 'Men', brand: '', price: '', gst: 18, stock_quantity: '', image: '', images: [], description: ''
             });
 
             useEffect(() => {
@@ -493,6 +490,7 @@
                         name: formData.name,
                         brand: formData.brand,
                         category: formData.category,
+                        sub_category: formData.sub_category,
                         description: formData.description,
                         base_price: parseFloat(formData.price),
                         gst_percentage: parseFloat(formData.gst),
@@ -517,6 +515,7 @@
                     if (data.success) {
                         fetchProducts();
                         resetForm();
+                        updateChannel.postMessage('REFRESH_CATALOG');
                     } else {
                         alert('Error: ' + data.message);
                     }
@@ -530,6 +529,7 @@
                     name: product.name,
                     brand: product.brand,
                     category: product.category,
+                    sub_category: product.sub_category || 'Men',
                     description: product.description,
                     price: product.base_price,
                     gst: product.gst_percentage,
@@ -549,7 +549,10 @@
                             headers: { 'Authorization': `Bearer ${token}` }
                         });
                         const data = await res.json();
-                        if (data.success) fetchProducts();
+                        if (data.success) {
+                            fetchProducts();
+                            updateChannel.postMessage('REFRESH_CATALOG');
+                        }
                     } catch (err) {
                         alert('Failed to delete product');
                     }
@@ -557,7 +560,7 @@
             };
 
             const resetForm = () => {
-                setFormData({ name: '', brand: '', category: 'Men', price: '', gst: 18, stock_quantity: '', image: '', images: [], description: '' });
+                setFormData({ name: '', brand: '', category: 'Perfume', sub_category: 'Men', price: '', gst: 18, stock_quantity: '', image: '', images: [], description: '' });
                 setIsAdding(false);
                 setEditingId(null);
             };
@@ -603,13 +606,19 @@
                                         <label className="block text-sm font-semibold text-gray-700 mb-1">Brand Name</label>
                                         <input required type="text" name="brand" value={formData.brand} onChange={handleInputChange} className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none transition" placeholder="e.g. Tom Ford" />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-1">Category</label>
                                             <select name="category" value={formData.category} onChange={handleInputChange} className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none bg-white transition">
+                                                <option value="Perfume">Perfume</option>
+                                                <option value="Jwellery">Jwellery</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-1">Sub Category</label>
+                                            <select name="sub_category" value={formData.sub_category} onChange={handleInputChange} className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none bg-white transition">
                                                 <option value="Men">Men</option>
                                                 <option value="Women">Women</option>
-                                                <option value="Unisex">Unisex</option>
                                                 <option value="Kids">Kids</option>
                                             </select>
                                         </div>
@@ -730,6 +739,11 @@
                                                 <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                                                     {product.category}
                                                 </span>
+                                                {product.sub_category && (
+                                                    <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 ml-1 mt-1 sm:mt-0">
+                                                        {product.sub_category}
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">₹{product.base_price.toLocaleString()}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -764,121 +778,6 @@
             );
         }
 
-        // --- Manage Sellers View ---
-        function ManageSellers({ token }) {
-            const [users, setUsers] = useState([]);
-            const [loading, setLoading] = useState(true);
-
-            useEffect(() => {
-                fetchUsers();
-            }, []);
-
-            const fetchUsers = async () => {
-                try {
-                    setLoading(true);
-                    const res = await fetch(`${API_BASE}/users/admin/users`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        setUsers(data.data);
-                    }
-                } catch (err) {
-                    console.error('Failed to fetch users');
-                } finally {
-                    setLoading(false);
-                }
-            };
-
-            const handlePromote = async (id, name) => {
-                if (confirm(`Are you sure you want to promote ${name} to a Seller/Admin?`)) {
-                    try {
-                        const res = await fetch(`${API_BASE}/users/admin/users/${id}/promote`, {
-                            method: 'PUT',
-                            headers: { 'Authorization': `Bearer ${token}` }
-                        });
-                        const data = await res.json();
-                        if (data.success) {
-                            fetchUsers();
-                        } else {
-                            alert(data.error || 'Failed to promote');
-                        }
-                    } catch (err) {
-                        alert('Server error promoting user');
-                    }
-                }
-            };
-
-            return (
-                <div className="space-y-6">
-                    <div className="flex justify-between items-center glass-panel rounded-2xl p-4 px-6 mb-6">
-                        <div>
-                            <h3 className="text-xl font-bold text-gray-800 flex items-center">
-                                <i data-lucide="shield-check" className="w-6 h-6 mr-2 text-brand-600"></i>
-                                Seller Privilege Management
-                            </h3>
-                            <p className="text-sm text-gray-500 mt-1">Review registered customers and upgrade them to Sellers to allow them to manage inventory.</p>
-                        </div>
-                    </div>
-
-                    <div className="glass-panel rounded-2xl overflow-hidden shadow-sm animate-fade-in-up">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50/80">
-                                <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">User</th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Joined</th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Role</th>
-                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-100">
-                                {loading ? (
-                                    <tr><td colSpan="4" className="text-center py-8 text-gray-500">Loading users...</td></tr>
-                                ) : users.map(user => (
-                                    <tr key={user.id} className="hover:bg-brand-50/30 transition-colors">
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center">
-                                                <div className="flex-shrink-0 h-10 w-10">
-                                                    <img className="h-10 w-10 rounded-full shadow-sm" src={`https://ui-avatars.com/api/?name=${user.name}&background=random`} alt="" />
-                                                </div>
-                                                <div className="ml-4">
-                                                    <div className="text-sm font-bold text-gray-900">{user.name}</div>
-                                                    <div className="text-sm text-gray-500">{user.email}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                            {new Date(user.created_at).toLocaleDateString()}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            {user.is_admin ? (
-                                                <span className="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full bg-brand-100 text-brand-800">
-                                                    Seller / Admin
-                                                </span>
-                                            ) : (
-                                                <span className="px-3 py-1 inline-flex text-xs leading-5 font-medium rounded-full bg-gray-100 text-gray-600">
-                                                    Customer
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            {!user.is_admin && (
-                                                <button 
-                                                    onClick={() => handlePromote(user.id, user.name)} 
-                                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-green-600 hover:bg-green-700 transition"
-                                                >
-                                                    <i data-lucide="arrow-up-circle" className="w-4 h-4 mr-1"></i> Upgrade to Seller
-                                                </button>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            );
-        }
 
         // --- Analytics View ---
         function Analytics() {
@@ -1150,6 +1049,25 @@
                                             <p className="text-sm font-mono font-bold text-purple-700 bg-purple-50 px-3 py-1.5 rounded-lg inline-block">{order.tracking_number}</p>
                                         </div>
                                     )}
+
+                                    {order.items && order.items.length > 0 && (
+                                        <div className="mt-4 pt-4 border-t border-gray-100">
+                                            <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold mb-3 flex items-center">
+                                                <i data-lucide="shopping-bag" className="w-3 h-3 mr-1"></i> Order Items
+                                            </p>
+                                            <div className="space-y-2">
+                                                {order.items.map((item, idx) => (
+                                                    <div key={idx} className="flex justify-between items-center text-xs">
+                                                        <span className="text-gray-600">
+                                                            <span className="font-bold text-gray-800">{item.product_name || `Product #${item.product_id}`}</span> 
+                                                            <span className="ml-2 px-1.5 py-0.5 bg-gray-100 rounded text-gray-500 font-bold">x{item.quantity}</span>
+                                                        </span>
+                                                        <span className="font-bold text-brand-900">₹{parseFloat(item.price_at_time).toLocaleString()}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Actions */}
@@ -1192,113 +1110,6 @@
             );
         }
 
-        // --- Store Profile ---
-        function StoreProfile({ token }) {
-            const [profile, setProfile] = useState({ business_name: '', business_address: '', pincode: '' });
-            const [message, setMessage] = useState('');
-            const [isLoading, setIsLoading] = useState(false);
-
-            useEffect(() => {
-                fetch(`${API_BASE}/users/profile`, { headers: { 'Authorization': `Bearer ${token}` } })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success && data.data) {
-                            setProfile({
-                                business_name: data.data.business_name || '',
-                                business_address: data.data.business_address || '',
-                                pincode: data.data.pincode || ''
-                            });
-                        }
-                    }).catch(err => console.error(err));
-            }, [token]);
-
-            const handleSubmit = async (e) => {
-                e.preventDefault();
-                setIsLoading(true);
-                setMessage('');
-                try {
-                    const res = await fetch(`${API_BASE}/users/profile`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify(profile)
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        setMessage('Store Profile Updated Successfully!');
-                    } else {
-                        setMessage(`Error: ${data.error}`);
-                    }
-                } catch (err) {
-                    setMessage('Failed to update profile.');
-                }
-                setIsLoading(false);
-            };
-
-            return (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 max-w-2xl mx-auto mt-10">
-                    <div className="flex items-center mb-6 border-b pb-4">
-                        <i data-lucide="building-2" className="w-8 h-8 text-brand-600 mr-3"></i>
-                        <h3 className="text-2xl font-bold text-gray-800">Store Profile</h3>
-                    </div>
-                    <p className="text-gray-500 mb-6 text-sm">Update your store details to ensure accurate delivery estimates and proper branding on the storefront.</p>
-                    
-                    {message && (
-                        <div className={`p-4 mb-6 rounded-md ${message.includes('Error') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
-                            {message}
-                        </div>
-                    )}
-
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Business/Store Name *</label>
-                            <input 
-                                required 
-                                type="text" 
-                                value={profile.business_name} 
-                                onChange={e => setProfile({...profile, business_name: e.target.value})}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition"
-                                placeholder="e.g. Perfume Paradise Mumbai" 
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Dispatch Address</label>
-                            <textarea 
-                                value={profile.business_address} 
-                                onChange={e => setProfile({...profile, business_address: e.target.value})}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition h-24"
-                                placeholder="123 Scent Avenue..." 
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Dispatch Pincode *</label>
-                            <input 
-                                required 
-                                type="text" 
-                                value={profile.pincode} 
-                                onChange={e => setProfile({...profile, pincode: e.target.value})}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition max-w-xs"
-                                placeholder="e.g. 400001" 
-                                pattern="[0-9]{6}"
-                                title="6 digit valid Indian Pincode"
-                            />
-                            <p className="text-xs text-brand-500 mt-1"><i data-lucide="info" className="w-3 h-3 inline"></i> Used to calculate shipping transit times.</p>
-                        </div>
-                        <div className="pt-4 flex justify-end">
-                            <button 
-                                type="submit" 
-                                disabled={isLoading}
-                                className="bg-brand-600 hover:bg-brand-700 text-white font-medium py-2 px-6 rounded-lg transition-colors flex items-center"
-                            >
-                                {isLoading ? 'Saving...' : <span><i data-lucide="save" className="w-4 h-4 mr-2"></i> Save Profile</span>}
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            );
-        }
 
         // --- Render Application & Initialize Icons ---
         const root = ReactDOM.createRoot(document.getElementById('root'));
