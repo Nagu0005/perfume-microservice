@@ -54,7 +54,7 @@ class UserService {
             idToken: credential,
             audience: GOOGLE_CLIENT_ID,
         });
-        
+
         const payload = ticket.getPayload();
         const { email, name } = payload;
 
@@ -76,7 +76,7 @@ class UserService {
             this.triggerWelcomeEmail(user.email, user.name);
         } else if (isRootAdmin && !user.is_admin) {
             // Need to promote existing user to admin if in whitelist
-             user = await userRepository.promote(user.id);
+            user = await userRepository.promote(user.id);
         }
 
         if (!user.is_admin && !isRootAdmin) {
@@ -107,7 +107,7 @@ class UserService {
     async getAllUsers() {
         return await userRepository.findAll();
     }
-    
+
     generateToken(id, email, is_admin = false) {
         return jwt.sign({ id, email, is_admin }, JWT_SECRET, { expiresIn: '7d' });
     }
@@ -116,7 +116,7 @@ class UserService {
         if (!profileData.business_name || !profileData.pincode) {
             throw new Error('Business Name and Pincode are mandatory for Store Profile.');
         }
-        
+
         const updatedUser = await userRepository.updateProfile(userId, profileData);
         if (!updatedUser) throw new Error('User not found');
         return updatedUser;
@@ -131,7 +131,7 @@ class UserService {
     // Trigger HTTP Request to Email Service directly
     async triggerWelcomeEmail(email, name) {
         try {
-            const EMAIL_SERVICE_URL = process.env.EMAIL_SERVICE_URL || 'http://email-service:7005/api/v1/emails';
+            const EMAIL_SERVICE_URL = process.env.EMAIL_SERVICE_URL || 'https://email-service:7005/api/v1/emails';
 
             const payload = {
                 recipient: email,
