@@ -234,15 +234,15 @@ jobs:
               -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
             # ── Pull latest images for all services ──
-            docker compose -f docker-compose.prod.yml pull
+            sudo docker-compose -f docker-compose.prod.yml pull
 
             # ── Restart containers (zero-downtime rolling style) ──
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            sudo docker-compose -f docker-compose.prod.yml up -d --remove-orphans
 
             # ── Remove dangling/old images to free disk ──
-            docker image prune -f
+            sudo docker image prune -f
 
             echo "──────────────────────────────────"
             echo " ✅ Deployment Complete!"
-            docker compose -f docker-compose.prod.yml ps
+            sudo docker-compose -f docker-compose.prod.yml ps
             echo "──────────────────────────────────"
