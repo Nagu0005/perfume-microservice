@@ -46,7 +46,7 @@ jobs:
         with:
           context: ./api-gateway
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-api-gateway:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ookielz-api-gateway:latest
           cache-from: type=gha,scope=api-gateway
           cache-to:   type=gha,scope=api-gateway,mode=max
 
@@ -55,7 +55,7 @@ jobs:
         with:
           context: ./user-service
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-user-service:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ookielz-user-service:latest
           cache-from: type=gha,scope=user-service
           cache-to:   type=gha,scope=user-service,mode=max
 
@@ -64,7 +64,7 @@ jobs:
         with:
           context: ./catalog-service
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-catalog-service:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ookielz-catalog-service:latest
           cache-from: type=gha,scope=catalog-service
           cache-to:   type=gha,scope=catalog-service,mode=max
 
@@ -73,7 +73,7 @@ jobs:
         with:
           context: ./cart-service
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-cart-service:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ookielz-cart-service:latest
           cache-from: type=gha,scope=cart-service
           cache-to:   type=gha,scope=cart-service,mode=max
 
@@ -82,7 +82,7 @@ jobs:
         with:
           context: ./checkout-service
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-checkout-service:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ookielz-checkout-service:latest
           cache-from: type=gha,scope=checkout-service
           cache-to:   type=gha,scope=checkout-service,mode=max
 
@@ -91,7 +91,7 @@ jobs:
         with:
           context: ./order-service
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-order-service:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ookielz-order-service:latest
           cache-from: type=gha,scope=order-service
           cache-to:   type=gha,scope=order-service,mode=max
 
@@ -100,7 +100,7 @@ jobs:
         with:
           context: ./payment-service
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-payment-service:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ookielz-payment-service:latest
           cache-from: type=gha,scope=payment-service
           cache-to:   type=gha,scope=payment-service,mode=max
 
@@ -109,7 +109,7 @@ jobs:
         with:
           context: ./shipping-service
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-shipping-service:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ookielz-shipping-service:latest
           cache-from: type=gha,scope=shipping-service
           cache-to:   type=gha,scope=shipping-service,mode=max
 
@@ -118,7 +118,7 @@ jobs:
         with:
           context: ./email-service
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-email-service:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ookielz-email-service:latest
           cache-from: type=gha,scope=email-service
           cache-to:   type=gha,scope=email-service,mode=max
 
@@ -127,7 +127,7 @@ jobs:
         with:
           context: ./recommendation-service
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-recommendation-service:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ookielz-recommendation-service:latest
           cache-from: type=gha,scope=recommendation-service
           cache-to:   type=gha,scope=recommendation-service,mode=max
 
@@ -136,7 +136,7 @@ jobs:
         with:
           context: ./ad-service
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-ad-service:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ookielz-ad-service:latest
           cache-from: type=gha,scope=ad-service
           cache-to:   type=gha,scope=ad-service,mode=max
 
@@ -145,7 +145,7 @@ jobs:
         with:
           context: ./currency-service
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-currency-service:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ookielz-currency-service:latest
           cache-from: type=gha,scope=currency-service
           cache-to:   type=gha,scope=currency-service,mode=max
 
@@ -154,7 +154,7 @@ jobs:
         with:
           context: ./frontend
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-frontend:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ookielz-frontend:latest
           cache-from: type=gha,scope=frontend
           cache-to:   type=gha,scope=frontend,mode=max
 
@@ -193,7 +193,7 @@ jobs:
 
             # ── Write the .env file from GitHub Secrets ──
             cat > .env <<'ENVEOF'
-            DOCKER_HUB_USER=${{ secrets.DOCKER_USERNAME }}
+            DOCKER_HUB_USER=${{ secrets.DOCKERHUB_USERNAME }}
             DB_USER=${{ secrets.DB_USER }}
             DB_PASS=${{ secrets.DB_PASS }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
@@ -230,8 +230,8 @@ jobs:
             cd ${{ env.APP_DIR }}
 
             # ── Login to Docker Hub on the server ──
-            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
-              -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+            echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login \
+              -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
             # ── Pull latest images for all services ──
             docker compose -f docker-compose.prod.yml pull
