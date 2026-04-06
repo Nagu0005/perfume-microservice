@@ -1,0 +1,247 @@
+name: CI/CD – Deploy to EC2
+
+# ─────────────────────────────────────────────
+# Triggers
+# ─────────────────────────────────────────────
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:          # allow manual run from GitHub UI
+
+# ─────────────────────────────────────────────
+# Environment variables shared across jobs
+# ─────────────────────────────────────────────
+env:
+  APP_DIR: /home/ubuntu/perfume_website   # deploy path on EC2
+
+jobs:
+  # ═══════════════════════════════════════════
+  # JOB 1 – Build & Push all Docker images
+  # ═══════════════════════════════════════════
+  build-and-push:
+    name: 🐳 Build & Push Docker Images
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout source code ─────────────
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # ── 2. Login to Docker Hub ──────────────
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # ── 3. Set up Docker Buildx (layer cache) ──
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ── 4. Build & push each microservice ───
+      #       Each service gets its own tagged image.
+
+      - name: Build & Push api-gateway
+        uses: docker/build-push-action@v5
+        with:
+          context: ./api-gateway
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-api-gateway:latest
+          cache-from: type=gha,scope=api-gateway
+          cache-to:   type=gha,scope=api-gateway,mode=max
+
+      - name: Build & Push user-service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./user-service
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-user-service:latest
+          cache-from: type=gha,scope=user-service
+          cache-to:   type=gha,scope=user-service,mode=max
+
+      - name: Build & Push catalog-service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./catalog-service
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-catalog-service:latest
+          cache-from: type=gha,scope=catalog-service
+          cache-to:   type=gha,scope=catalog-service,mode=max
+
+      - name: Build & Push cart-service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./cart-service
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-cart-service:latest
+          cache-from: type=gha,scope=cart-service
+          cache-to:   type=gha,scope=cart-service,mode=max
+
+      - name: Build & Push checkout-service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./checkout-service
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-checkout-service:latest
+          cache-from: type=gha,scope=checkout-service
+          cache-to:   type=gha,scope=checkout-service,mode=max
+
+      - name: Build & Push order-service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./order-service
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-order-service:latest
+          cache-from: type=gha,scope=order-service
+          cache-to:   type=gha,scope=order-service,mode=max
+
+      - name: Build & Push payment-service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./payment-service
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-payment-service:latest
+          cache-from: type=gha,scope=payment-service
+          cache-to:   type=gha,scope=payment-service,mode=max
+
+      - name: Build & Push shipping-service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./shipping-service
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-shipping-service:latest
+          cache-from: type=gha,scope=shipping-service
+          cache-to:   type=gha,scope=shipping-service,mode=max
+
+      - name: Build & Push email-service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./email-service
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-email-service:latest
+          cache-from: type=gha,scope=email-service
+          cache-to:   type=gha,scope=email-service,mode=max
+
+      - name: Build & Push recommendation-service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./recommendation-service
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-recommendation-service:latest
+          cache-from: type=gha,scope=recommendation-service
+          cache-to:   type=gha,scope=recommendation-service,mode=max
+
+      - name: Build & Push ad-service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ad-service
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-ad-service:latest
+          cache-from: type=gha,scope=ad-service
+          cache-to:   type=gha,scope=ad-service,mode=max
+
+      - name: Build & Push currency-service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./currency-service
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-currency-service:latest
+          cache-from: type=gha,scope=currency-service
+          cache-to:   type=gha,scope=currency-service,mode=max
+
+      - name: Build & Push frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/ookielz-frontend:latest
+          cache-from: type=gha,scope=frontend
+          cache-to:   type=gha,scope=frontend,mode=max
+
+  # ═══════════════════════════════════════════
+  # JOB 2 – Deploy to EC2 over SSH
+  # ═══════════════════════════════════════════
+  deploy:
+    name: 🚀 Deploy to EC2
+    runs-on: ubuntu-latest
+    needs: build-and-push          # only runs after images are pushed
+
+    steps:
+      # ── 1. Checkout (needed to copy docker-compose.yml) ──
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # ── 2. SSH into EC2 and deploy ──────────
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:        ${{ secrets.EC2_HOST }}
+          username:    ${{ secrets.EC2_USER }}
+          key:         ${{ secrets.EC2_SSH_KEY }}
+          port:        22
+          timeout:     120s
+          script: |
+            set -e   # exit immediately on any error
+
+            echo "──────────────────────────────────"
+            echo " Deploying Ookielz to EC2"
+            echo "──────────────────────────────────"
+
+            # ── Create app directory if missing ──
+            mkdir -p ${{ env.APP_DIR }}
+            cd ${{ env.APP_DIR }}
+
+            # ── Write the .env file from GitHub Secrets ──
+            cat > .env <<'ENVEOF'
+            DB_USER=${{ secrets.DB_USER }}
+            DB_PASS=${{ secrets.DB_PASS }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            ADMIN_EMAILS=${{ secrets.ADMIN_EMAILS }}
+            SMTP_USER=${{ secrets.SMTP_USER }}
+            SMTP_PASS=${{ secrets.SMTP_PASS }}
+            ENVEOF
+
+            echo "✅ .env written"
+
+      # ── 3. Copy docker-compose.yml to EC2 ──
+      - name: Copy docker-compose.yml to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host:     ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key:      ${{ secrets.EC2_SSH_KEY }}
+          port:     22
+          source:   "docker-compose.prod.yml,init-db.sql"
+          target:   ${{ env.APP_DIR }}
+
+      # ── 4. Pull newest images & restart ────
+      - name: Pull Images & Restart Containers
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:     ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key:      ${{ secrets.EC2_SSH_KEY }}
+          port:     22
+          timeout:  300s
+          script: |
+            set -e
+            cd ${{ env.APP_DIR }}
+
+            # ── Login to Docker Hub on the server ──
+            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
+              -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+            # ── Pull latest images for all services ──
+            docker compose -f docker-compose.prod.yml pull
+
+            # ── Restart containers (zero-downtime rolling style) ──
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+            # ── Remove dangling/old images to free disk ──
+            docker image prune -f
+
+            echo "──────────────────────────────────"
+            echo " ✅ Deployment Complete!"
+            docker compose -f docker-compose.prod.yml ps
+            echo "──────────────────────────────────"
