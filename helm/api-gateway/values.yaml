@@ -34,6 +34,7 @@ ingress:
   className: nginx
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
   hosts:
     - host: api.perfume.local
       paths:

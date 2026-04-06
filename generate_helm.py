@@ -460,6 +460,7 @@ for service, config in SERVICES.items():
             f"  className: nginx\n"
             f"  annotations:\n"
             f"    nginx.ingress.kubernetes.io/rewrite-target: /\n"
+            f"    nginx.ingress.kubernetes.io/proxy-body-size: \"100m\"\n"
             f"  hosts:\n"
             f"    - host: {ingress_host}\n"
             f"      paths:\n"

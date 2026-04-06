@@ -12,7 +12,7 @@ const app = express();
 // Security middleware
 app.use(helmet());
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '100mb' }));
 
 app.use('/api/v1/catalog', productRoutes);
 

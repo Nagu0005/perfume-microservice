@@ -1,7 +1,7 @@
 FROM nginx:alpine
 
-# Copy custom nginx configuration if needed (optional)
-# COPY nginx.conf /etc/nginx/nginx.conf
+# Copy custom nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
 
 # Copy static frontend files to nginx html directory
 COPY . /usr/share/nginx/html
