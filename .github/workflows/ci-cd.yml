@@ -187,12 +187,13 @@ jobs:
             echo " Deploying Ookielz to EC2"
             echo "──────────────────────────────────"
 
-            # ── Create app directory if missing ──
-            mkdir -p ${{ env.APP_DIR }}
+            # ── Create app directory if missing and fix ownership ──
+            sudo mkdir -p ${{ env.APP_DIR }}
+            sudo chown -R $USER:$USER ${{ env.APP_DIR }}
             cd ${{ env.APP_DIR }}
 
-            # ── Write the .env file from GitHub Secrets ──
-            cat > .env <<'ENVEOF'
+            # ── Write the .env file with sudo to ensure access ──
+            sudo tee .env <<'ENVEOF' > /dev/null
             DOCKER_HUB_USER=${{ secrets.DOCKERHUB_USERNAME }}
             DB_USER=${{ secrets.DB_USER }}
             DB_PASS=${{ secrets.DB_PASS }}
