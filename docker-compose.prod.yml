@@ -1,0 +1,365 @@
+# ─────────────────────────────────────────────────────────────────────
+#  docker-compose.prod.yml  –  Production / EC2
+#
+#  This file uses pre-built Docker Hub images (pushed by CI/CD).
+#  It does NOT build from source — that happens in GitHub Actions.
+#
+#  Required .env variables on the server (written by the CI pipeline):
+#    DOCKER_HUB_USER, DB_USER, DB_PASS, JWT_SECRET,
+#    GOOGLE_CLIENT_ID, ADMIN_EMAILS, SMTP_USER, SMTP_PASS
+# ─────────────────────────────────────────────────────────────────────
+version: '3.8'
+
+services:
+  # ── Shared PostgreSQL Database ───────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    container_name: perfume_postgres
+    environment:
+      POSTGRES_USER:     ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASS}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - perfume_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+    deploy:
+      resources:
+        limits:
+          memory: 1GB
+          cpus: '0.5'
+
+  # ── API Gateway ──────────────────────────────────────────────────
+  api-gateway:
+    image: ${DOCKER_HUB_USER}/ookielz-api-gateway:latest
+    container_name: api-gateway
+    ports:
+      - "8090:8090"
+    environment:
+      - PORT=8090
+      - NODE_ENV=production
+      - CORS_ORIGIN=*
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      catalog-service:        { condition: service_started }
+      cart-service:           { condition: service_started }
+      checkout-service:       { condition: service_started }
+      order-service:          { condition: service_started }
+      payment-service:        { condition: service_started }
+      shipping-service:       { condition: service_started }
+      email-service:          { condition: service_started }
+      recommendation-service: { condition: service_started }
+      ad-service:             { condition: service_started }
+      currency-service:       { condition: service_started }
+      user-service:           { condition: service_started }
+    networks:
+      - perfume_net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+
+  # ── User / Auth Service ──────────────────────────────────────────
+  user-service:
+    image: ${DOCKER_HUB_USER}/ookielz-user-service:latest
+    container_name: user-service
+    ports:
+      - "7010:7010"
+    environment:
+      - PORT=7010
+      - NODE_ENV=production
+      - DB_HOST=db
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASS}
+      - DB_NAME=user_db
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_EMAILS=${ADMIN_EMAILS}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - EMAIL_SERVICE_URL=http://email-service:7005/api/v1/emails
+    depends_on:
+      db: { condition: service_healthy }
+    networks:
+      - perfume_net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+
+  # ── Catalog Service ──────────────────────────────────────────────
+  catalog-service:
+    image: ${DOCKER_HUB_USER}/ookielz-catalog-service:latest
+    container_name: catalog-service
+    ports:
+      - "7006:7006"
+    environment:
+      - PORT=7006
+      - NODE_ENV=production
+      - DB_HOST=db
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASS}
+      - DB_NAME=catalog_db
+    depends_on:
+      db: { condition: service_healthy }
+    networks:
+      - perfume_net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+
+  # ── Cart Service ─────────────────────────────────────────────────
+  cart-service:
+    image: ${DOCKER_HUB_USER}/ookielz-cart-service:latest
+    container_name: cart-service
+    ports:
+      - "7001:7001"
+    environment:
+      - PORT=7001
+      - NODE_ENV=production
+      - DB_HOST=db
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASS}
+      - DB_NAME=cart_db
+    depends_on:
+      db: { condition: service_healthy }
+    networks:
+      - perfume_net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+
+  # ── Checkout Service ─────────────────────────────────────────────
+  checkout-service:
+    image: ${DOCKER_HUB_USER}/ookielz-checkout-service:latest
+    container_name: checkout-service
+    ports:
+      - "7004:7004"
+    environment:
+      - PORT=7004
+      - NODE_ENV=production
+      - DB_HOST=db
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASS}
+      - DB_NAME=checkout_db
+    depends_on:
+      db: { condition: service_healthy }
+    networks:
+      - perfume_net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+
+  # ── Order Service ────────────────────────────────────────────────
+  order-service:
+    image: ${DOCKER_HUB_USER}/ookielz-order-service:latest
+    container_name: order-service
+    ports:
+      - "5003:5003"
+    environment:
+      - PORT=5003
+      - NODE_ENV=production
+      - DB_HOST=db
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASS}
+      - DB_NAME=order_db
+    depends_on:
+      db: { condition: service_healthy }
+    networks:
+      - perfume_net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+
+  # ── Payment Service ──────────────────────────────────────────────
+  payment-service:
+    image: ${DOCKER_HUB_USER}/ookielz-payment-service:latest
+    container_name: payment-service
+    ports:
+      - "7003:7003"
+    environment:
+      - PORT=7003
+      - NODE_ENV=production
+      - DB_HOST=db
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASS}
+      - DB_NAME=payment_db
+    depends_on:
+      db: { condition: service_healthy }
+    networks:
+      - perfume_net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+
+  # ── Shipping Service ─────────────────────────────────────────────
+  shipping-service:
+    image: ${DOCKER_HUB_USER}/ookielz-shipping-service:latest
+    container_name: shipping-service
+    ports:
+      - "7008:7008"
+    environment:
+      - PORT=7008
+      - NODE_ENV=production
+      - DB_HOST=db
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASS}
+      - DB_NAME=shipping_db
+    depends_on:
+      db: { condition: service_healthy }
+    networks:
+      - perfume_net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+
+  # ── Email Service ────────────────────────────────────────────────
+  email-service:
+    image: ${DOCKER_HUB_USER}/ookielz-email-service:latest
+    container_name: email-service
+    ports:
+      - "7005:7005"
+    environment:
+      - PORT=7005
+      - NODE_ENV=production
+      - DB_HOST=db
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASS}
+      - DB_NAME=email_db
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=465
+      - SMTP_SECURE=true
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+    depends_on:
+      db: { condition: service_healthy }
+    networks:
+      - perfume_net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+
+  # ── Recommendation Service ───────────────────────────────────────
+  recommendation-service:
+    image: ${DOCKER_HUB_USER}/ookielz-recommendation-service:latest
+    container_name: recommendation-service
+    ports:
+      - "7007:7007"
+    environment:
+      - PORT=7007
+      - NODE_ENV=production
+      - DB_HOST=db
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASS}
+      - DB_NAME=recommendation_db
+    depends_on:
+      db: { condition: service_healthy }
+    networks:
+      - perfume_net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+
+  # ── Ad Service ───────────────────────────────────────────────────
+  ad-service:
+    image: ${DOCKER_HUB_USER}/ookielz-ad-service:latest
+    container_name: ad-service
+    ports:
+      - "7002:7002"
+    environment:
+      - PORT=7002
+      - NODE_ENV=production
+      - DB_HOST=db
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASS}
+      - DB_NAME=ad_db
+    depends_on:
+      db: { condition: service_healthy }
+    networks:
+      - perfume_net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+
+  # ── Currency Service ─────────────────────────────────────────────
+  currency-service:
+    image: ${DOCKER_HUB_USER}/ookielz-currency-service:latest
+    container_name: currency-service
+    ports:
+      - "7009:7009"
+    environment:
+      - PORT=7009
+      - NODE_ENV=production
+      - DB_HOST=db
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASS}
+      - DB_NAME=currency_db
+    depends_on:
+      db: { condition: service_healthy }
+    networks:
+      - perfume_net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+
+  # ── Frontend (Nginx static) ──────────────────────────────────────
+  frontend:
+    image: ${DOCKER_HUB_USER}/ookielz-frontend:latest
+    container_name: frontend
+    ports:
+      - "3001:80"
+    networks:
+      - perfume_net
+    restart: unless-stopped
+    depends_on:
+      - api-gateway
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.15'
+
+volumes:
+  pgdata:
+
+networks:
+  perfume_net:
+    driver: bridge

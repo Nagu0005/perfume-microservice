@@ -55,9 +55,8 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
         const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        // In production, Nginx listens on port 443 (HTTPS) and proxies to the API gateway.
-        // Do NOT append :8090 in production — that would bypass Nginx and fail.
-        const PROTO_HOST = isLocal ? 'http://localhost:8090' : window.location.protocol + '//' + window.location.hostname;
+        // In production, we use relative paths to let Nginx handle the routing via port 443.
+        const PROTO_HOST = isLocal ? 'http://localhost:8090' : '';
         const API_BASE = `${PROTO_HOST}/api/v1`;
 
         const updateChannel = new BroadcastChannel('perfume_updates');

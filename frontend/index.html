@@ -131,9 +131,8 @@
         const { useState, useEffect, useMemo, useRef } = React;
 
         const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        // In production, Nginx listens on port 443 (HTTPS) and proxies to the API gateway.
-        // Do NOT append :8090 in production — that would bypass Nginx and fail.
-        const API_BASE = isLocal ? 'http://localhost:8090/api/v1' : window.location.protocol + '//' + window.location.hostname + '/api/v1';
+        // In production, we use relative paths to let Nginx handle the routing via port 443.
+        const API_BASE = isLocal ? 'http://localhost:8090/api/v1' : '/api/v1';
 
         const SVG_ICONS = {
             'heart': '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.505 4.045 3 5.5l7 7Z" />',
