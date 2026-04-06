@@ -193,6 +193,7 @@ jobs:
 
             # ── Write the .env file from GitHub Secrets ──
             cat > .env <<'ENVEOF'
+            DOCKER_HUB_USER=${{ secrets.DOCKER_USERNAME }}
             DB_USER=${{ secrets.DB_USER }}
             DB_PASS=${{ secrets.DB_PASS }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
